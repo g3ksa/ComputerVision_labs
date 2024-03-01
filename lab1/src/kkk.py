@@ -1,14 +1,13 @@
 import os
-import PIL.Image
+import random
 import sys
-from PyQt5.QtWidgets import QLabel, QApplication, QMainWindow, QHBoxLayout
-from PyQt5.QtGui import QPixmap, QImage, QColor
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel
-from PyQt5 import QtGui
-from PyQt5.QtGui import QPainter, QColor
+from PyQt5.QtWidgets import QLabel, QApplication, QMainWindow
+from PyQt5.QtGui import QPixmap, QImage
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QGridLayout
 import math
+from PyQt5.QtCore import QPoint
 from PyQt5.QtWidgets import QFileDialog, QPushButton
+from PyQt5.QtGui import QColor, QPainter, QPen, QPolygon
 
 os.environ["XDG_SESSION_TYPE"] = "xcb"
 
@@ -50,235 +49,158 @@ class ImageWindow(QMainWindow):
             self.image.save(file_path)
 
     def decrease_intensity(self):
-        if hasattr(self, "image") and isinstance(self.image, QPixmap):
-            image_qimage = self.image.toImage()
+        image_qimage = self.image.toImage()
+        width, height = image_qimage.width(), image_qimage.height()
+        new_image = QImage(width, height, QImage.Format_ARGB32)
+        channel_factor = 0.7
 
-            width, height = image_qimage.width(), image_qimage.height()
+        for y in range(height):
+            for x in range(width):
+                pixel = image_qimage.pixel(x, y)
+                red, green, blue, alpha = QColor(pixel).getRgb()
+                new_red = min(255, int(red * channel_factor))
+                new_green = min(255, int(green * channel_factor))
+                new_blue = min(255, int(blue * channel_factor))
+                new_color = QColor(new_red, new_green, new_blue, alpha)
+                new_image.setPixel(x, y, new_color.rgb())
 
-            new_image = QImage(width, height, QImage.Format_ARGB32)
-
-            channel_factor = 0.7
-
-            for y in range(height):
-                for x in range(width):
-                    pixel = image_qimage.pixel(x, y)
-
-                    red, green, blue, alpha = QColor(pixel).getRgb()
-
-                    # Уменьшаем интенсивность каждого цветового канала
-                    new_red = min(255, int(red * channel_factor))
-                    new_green = min(255, int(green * channel_factor))
-                    new_blue = min(255, int(blue * channel_factor))
-
-                    # Создаем новый цвет с уменьшенной интенсивностью и цветовыми каналами
-                    new_color = QColor(new_red, new_green, new_blue, alpha)
-
-                    # Устанавливаем новый цвет для пикселя
-                    new_image.setPixel(x, y, new_color.rgb())
-
-            # Обновляем изображение
-            self.image = QPixmap(new_image)
-            self.label.setPixmap(self.image)
+        self.image = QPixmap(new_image)
+        self.label.setPixmap(self.image)
 
     def increase_intensity(self):
-        if hasattr(self, "image") and isinstance(self.image, QPixmap):
-            image_qimage = self.image.toImage()
+        image_qimage = self.image.toImage()
+        width, height = image_qimage.width(), image_qimage.height()
+        new_image = QImage(width, height, QImage.Format_ARGB32)
+        channel_factor = 1.3
 
-            width, height = image_qimage.width(), image_qimage.height()
+        for y in range(height):
+            for x in range(width):
+                pixel = image_qimage.pixel(x, y)
+                red, green, blue, alpha = QColor(pixel).getRgb()
+                new_red = min(255, int(red * channel_factor))
+                new_green = min(255, int(green * channel_factor))
+                new_blue = min(255, int(blue * channel_factor))
+                new_color = QColor(new_red, new_green, new_blue, alpha)
+                new_image.setPixel(x, y, new_color.rgb())
 
-            new_image = QImage(width, height, QImage.Format_ARGB32)
-
-            channel_factor = 1.3
-
-            for y in range(height):
-                for x in range(width):
-                    pixel = image_qimage.pixel(x, y)
-
-                    red, green, blue, alpha = QColor(pixel).getRgb()
-
-                    # Увеличиваем интенсивность каждого цветового канала
-                    new_red = min(255, int(red * channel_factor))
-                    new_green = min(255, int(green * channel_factor))
-                    new_blue = min(255, int(blue * channel_factor))
-
-                    # Создаем новый цвет с увеличенной интенсивностью и цветовыми каналами
-                    new_color = QColor(new_red, new_green, new_blue, alpha)
-
-                    # Устанавливаем новый цвет для пикселя
-                    new_image.setPixel(x, y, new_color.rgb())
-
-            # Обновляем изображение
-            self.image = QPixmap(new_image)
-            self.label.setPixmap(self.image)
+        self.image = QPixmap(new_image)
+        self.label.setPixmap(self.image)
 
     def decrease_contrast(self):
-        if hasattr(self, "image") and isinstance(self.image, QPixmap):
-            image_qimage = self.image.toImage()
+        image_qimage = self.image.toImage()
+        width, height = image_qimage.width(), image_qimage.height()
+        contrast_level = 0.7
+        new_image = QImage(width, height, QImage.Format_ARGB32)
 
-            width, height = image_qimage.width(), image_qimage.height()
-            contrast_level = 0.7
-            new_image = QImage(width, height, QImage.Format_ARGB32)
+        for y in range(height):
+            for x in range(width):
+                pixel = image_qimage.pixel(x, y)
+                red, green, blue, alpha = QColor(pixel).getRgb()
+                new_red = ((red / 255 - 0.5) * contrast_level + 0.5) * 255
+                new_green = ((green / 255 - 0.5) * contrast_level + 0.5) * 255
+                new_blue = ((blue / 255 - 0.5) * contrast_level + 0.5) * 255
+                new_red = min(255, max(0, int(new_red)))
+                new_green = min(255, max(0, int(new_green)))
+                new_blue = min(255, max(0, int(new_blue)))
+                new_color = QColor(new_red, new_green, new_blue, alpha)
+                new_image.setPixel(x, y, new_color.rgb())
 
-            for y in range(height):
-                for x in range(width):
-                    pixel = image_qimage.pixel(x, y)
-
-                    red, green, blue, alpha = QColor(pixel).getRgb()
-
-                    # Применяем формулу для уменьшения контрастности
-                    new_red = ((red / 255 - 0.5) * contrast_level + 0.5) * 255
-                    new_green = ((green / 255 - 0.5) * contrast_level + 0.5) * 255
-                    new_blue = ((blue / 255 - 0.5) * contrast_level + 0.5) * 255
-
-                    # Ограничиваем значения каналов
-                    new_red = min(255, max(0, int(new_red)))
-                    new_green = min(255, max(0, int(new_green)))
-                    new_blue = min(255, max(0, int(new_blue)))
-
-                    # Создаем новый цвет с измененной контрастностью
-                    new_color = QColor(new_red, new_green, new_blue, alpha)
-
-                    # Устанавливаем новый цвет для пикселя
-                    new_image.setPixel(x, y, new_color.rgb())
-
-            # Обновляем изображение
-            self.image = QPixmap(new_image)
-            self.label.setPixmap(self.image)
+        self.image = QPixmap(new_image)
+        self.label.setPixmap(self.image)
 
     def increase_contrast(self):
-        if hasattr(self, "image") and isinstance(self.image, QPixmap):
-            image_qimage = self.image.toImage()
+        image_qimage = self.image.toImage()
+        width, height = image_qimage.width(), image_qimage.height()
+        contrast_level = 1.3
+        new_image = QImage(width, height, QImage.Format_ARGB32)
 
-            width, height = image_qimage.width(), image_qimage.height()
-            contrast_level = 1.3
-            new_image = QImage(width, height, QImage.Format_ARGB32)
+        for y in range(height):
+            for x in range(width):
+                pixel = image_qimage.pixel(x, y)
+                red, green, blue, alpha = QColor(pixel).getRgb()
+                new_red = ((red / 255 - 0.5) * contrast_level + 0.5) * 255
+                new_green = ((green / 255 - 0.5) * contrast_level + 0.5) * 255
+                new_blue = ((blue / 255 - 0.5) * contrast_level + 0.5) * 255
+                new_red = min(255, max(0, int(new_red)))
+                new_green = min(255, max(0, int(new_green)))
+                new_blue = min(255, max(0, int(new_blue)))
+                new_color = QColor(new_red, new_green, new_blue, alpha)
+                new_image.setPixel(x, y, new_color.rgb())
 
-            for y in range(height):
-                for x in range(width):
-                    pixel = image_qimage.pixel(x, y)
-
-                    red, green, blue, alpha = QColor(pixel).getRgb()
-
-                    # Применяем формулу для уменьшения контрастности
-                    new_red = ((red / 255 - 0.5) * contrast_level + 0.5) * 255
-                    new_green = ((green / 255 - 0.5) * contrast_level + 0.5) * 255
-                    new_blue = ((blue / 255 - 0.5) * contrast_level + 0.5) * 255
-
-                    # Ограничиваем значения каналов
-                    new_red = min(255, max(0, int(new_red)))
-                    new_green = min(255, max(0, int(new_green)))
-                    new_blue = min(255, max(0, int(new_blue)))
-
-                    # Создаем новый цвет с измененной контрастностью
-                    new_color = QColor(new_red, new_green, new_blue, alpha)
-
-                    # Устанавливаем новый цвет для пикселя
-                    new_image.setPixel(x, y, new_color.rgb())
-
-            # Обновляем изображение
-            self.image = QPixmap(new_image)
-            self.label.setPixmap(self.image)
+        self.image = QPixmap(new_image)
+        self.label.setPixmap(self.image)
 
     def invert_brightness(self):
-        if hasattr(self, "image") and isinstance(self.image, QPixmap):
-            image_qimage = self.image.toImage()
+        image_qimage = self.image.toImage()
+        width, height = image_qimage.width(), image_qimage.height()
+        new_image = QImage(width, height, QImage.Format_ARGB32)
 
-            width, height = image_qimage.width(), image_qimage.height()
+        for y in range(height):
+            for x in range(width):
+                pixel = image_qimage.pixel(x, y)
+                red, green, blue, alpha = QColor(pixel).getRgb()
+                inverted_red = 255 - red
+                inverted_green = 255 - green
+                inverted_blue = 255 - blue
+                new_color = QColor(inverted_red, inverted_green, inverted_blue, alpha)
+                new_image.setPixel(x, y, new_color.rgb())
 
-            new_image = QImage(width, height, QImage.Format_ARGB32)
+        self.image = QPixmap(new_image)
+        self.label.setPixmap(self.image)
 
-            for y in range(height):
-                for x in range(width):
-                    pixel = image_qimage.pixel(x, y)
+    def apply_random_filter(self):
+        image_qimage = self.image.toImage()
+        width, height = image_qimage.width(), image_qimage.height()
+        new_image = QImage(width, height, QImage.Format_ARGB32)
 
-                    red, green, blue, alpha = QColor(pixel).getRgb()
+        for y in range(height):
+            for x in range(width):
+                pixel = image_qimage.pixel(x, y)
+                red, green, blue, alpha = QColor(pixel).getRgb()
+                new_red = min(255, int(random.uniform(0.0, 1.0) * red + random.uniform(0.0, 1.0) * green + random.uniform(0.0, 1.0) * blue))
+                new_green = min(255, int(random.uniform(0.0, 1.0) * red + random.uniform(0.0, 1.0) * green + random.uniform(0.0, 1.0) * blue))
+                new_blue = min(255, int(random.uniform(0.0, 1.0) * red + random.uniform(0.0, 1.0) * green + random.uniform(0.0, 1.0) * blue))
+                new_color = QColor(new_red, new_green, new_blue, alpha)
+                new_image.setPixel(x, y, new_color.rgb())
 
-                    # Инвертируем значения цветовых каналов
-                    inverted_red = 255 - red
-                    inverted_green = 255 - green
-                    inverted_blue = 255 - blue
+        self.image = QPixmap.fromImage(new_image)
+        self.label.setPixmap(self.image)
 
-                    # Создаем новый цвет с инвертированной яркостью
-                    new_color = QColor(
-                        inverted_red, inverted_green, inverted_blue, alpha
-                    )
-
-                    # Устанавливаем новый цвет для пикселя
-                    new_image.setPixel(x, y, new_color.rgb())
-
-            # Обновляем изображение
-            self.image = QPixmap(new_image)
-            self.label.setPixmap(self.image)
-
-    def apply_sepia_filter(self):
-        if hasattr(self, "image") and isinstance(self.image, QPixmap):
-            image_qimage = self.image.toImage()
-
-            width, height = image_qimage.width(), image_qimage.height()
-
-            new_image = QImage(width, height, QImage.Format_ARGB32)
-
-            for y in range(height):
-                for x in range(width):
-                    pixel = image_qimage.pixel(x, y)
-
-                    red, green, blue, alpha = QColor(pixel).getRgb()
-
-                    # Применяем фильтр сепии
-                    new_red = min(255, int(0.393 * red + 0.769 * green + 0.189 * blue))
-                    new_green = min(
-                        255, int(0.349 * red + 0.686 * green + 0.168 * blue)
-                    )
-                    new_blue = min(255, int(0.272 * red + 0.534 * green + 0.131 * blue))
-
-                    # Создаем новый цвет с эффектом сепии
-                    new_color = QColor(new_red, new_green, new_blue, alpha)
-
-                    # Устанавливаем новый цвет для пикселя
-                    new_image.setPixel(x, y, new_color.rgb())
-
-            # Обновляем изображение
-            self.image = QPixmap.fromImage(new_image)
-            self.label.setPixmap(self.image)
 
     def reset_to_original(self):
         self.image = QPixmap(self.original_image)
         self.label.setPixmap(self.image)
 
-    def mouseMoveEvent(self, event):
-        if not self.image.rect().contains(event.pos()):
-            return
-
-        x = event.x()
-        y = event.y()
+    def get_pixel_info(self, x, y):
+        if not self.image.rect().contains(x, y):
+            return None
 
         pixel_color = QColor(self.image.toImage().pixel(x, y))
         rgb = f"RGB: ({pixel_color.red()}, {pixel_color.green()}, {pixel_color.blue()})"
-        brightness = int(
-            (pixel_color.red() + pixel_color.green() + pixel_color.blue()) / 3
-        )
+        brightness = int((pixel_color.red() + pixel_color.green() + pixel_color.blue()) / 3)
 
         variance = 0
         for i in range(self.image.width()):
             for j in range(self.image.height()):
                 if i == x and j == y:
                     pixel_color = QColor(self.image.toImage().pixel(i, j))
-                    brightness1 = int(
-                        (pixel_color.red() + pixel_color.green() + pixel_color.blue())
-                        / 3
-                    )
+                    brightness1 = int((pixel_color.red() + pixel_color.green() + pixel_color.blue()) / 3)
                     variance += (brightness1 - self.average_brightness) ** 2
 
         variance /= self.num_pixels
         standard_deviation = math.sqrt(variance)
 
-        # self.statusBar().showMessage(f"Координаты пикселя, цвет и интенсивность: ({x}, {y}) | {rgb} | {brightness}")
-        # Создаем текст для отображения в окне с информацией о пикселе
+        return {
+            "x": x,
+            "y": y,
+            "rgb": rgb,
+            "brightness": brightness,
+            "average_brightness": self.average_brightness,
+            "variance": variance,
+            "standard_deviation": standard_deviation
+        }
 
-        text = f"Координаты пикселя: ({x}, {y}) | Цвет: {rgb} | Интенсивность: {brightness} | Среднее значение яркости: {self.average_brightness} | Дисперсия: {variance} | Стандартное отклонение: {standard_deviation}"
-        # text = f"Координаты пикселя: ({x}, {y}) | Цвет: {rgb} | Интенсивность: {brightness} | Среднее значение яркости: {}"
-
-        # Проверяем, существует ли уже окно с информацией о пикселе
+    def show_pixel_info_window(self, pixel_info):
         if not hasattr(self, "info_window"):
             self.info_window = QWidget()
             self.info_window.setWindowTitle("Pixel Info")
@@ -287,35 +209,68 @@ class ImageWindow(QMainWindow):
             self.info_label = QLabel()
             layout.addWidget(self.info_label)
 
-            button_layout = QHBoxLayout()
+            button_layout = QGridLayout()
 
             buttons_data = [
                 ("Сохранить изображение", self.save_image),
-                ("Увелечение интенсивности", self.increase_intensity),
+                ("Увеличение интенсивности", self.increase_intensity),
                 ("Уменьшение интенсивности", self.decrease_intensity),
                 ("Повышение контрастности", self.increase_contrast),
                 ("Уменьшение контрастности", self.decrease_contrast),
                 ("Получение негатива", self.invert_brightness),
                 ("Обмен цветовых каналов", self.save_image),
-                ("Симметрочное отображение", self.save_image),
+                ("Симметричное отображение", self.save_image),
                 ("Удаление шума", self.save_image),
-                ("Сепия фильтр", self.apply_sepia_filter),
+                ("Ретро фильтр", self.apply_random_filter),
                 ("Сброс", self.reset_to_original),
             ]
 
-            for button_text, button_function in buttons_data:
+            for i, (button_text, button_function) in enumerate(buttons_data):
                 button = QPushButton(button_text)
-                button.setFixedSize(150, 50)
                 button.clicked.connect(button_function)
-                button_layout.addWidget(button)
+                button_layout.addWidget(button, i // 2, i % 2)
 
             layout.addLayout(button_layout)
-
             self.info_window.setLayout(layout)
             self.info_window.setGeometry(100, 100, 600, 150)
-            self.info_window.show()
-        # Обновляем текст в окне с информацией о пикселе
+
+        text = f"Координаты пикселя: ({pixel_info['x']}, {pixel_info['y']}) | " \
+            f"Цвет: {pixel_info['rgb']} | " \
+            f"Интенсивность: {pixel_info['brightness']} | " \
+            f"Среднее значение яркости: {pixel_info['average_brightness']} | " \
+            f"Дисперсия: {pixel_info['variance']} | " \
+            f"Стандартное отклонение: {pixel_info['standard_deviation']}"
+
         self.info_label.setText(text)
+        self.info_window.show()
+
+    def mouseMoveEvent(self, event):
+        # Получаем координаты курсора
+        x = event.x()
+        y = event.y()
+
+        # Получаем информацию о пикселе
+        pixel_info = self.get_pixel_info(x, y)
+
+        if pixel_info:
+            # Показываем окно с информацией о пикселе
+            self.show_pixel_info_window(pixel_info)
+
+            # Отображаем треугольник вокруг курсора
+            triangle_size = 10
+            triangle_polygon = QPolygon([
+                QPoint(x, y - triangle_size),
+                QPoint(x - triangle_size, y + triangle_size),
+                QPoint(x + triangle_size, y + triangle_size)
+            ])
+            triangle_color = QColor(255, 0, 0)  # Красный треугольник
+            triangle_pen = QPen(QColor(0, 0, 0))  # Чёрная обводка
+            painter = QPainter(self.label.pixmap())
+            painter.setPen(triangle_pen)
+            painter.setBrush(triangle_color)
+            painter.drawPolygon(triangle_polygon)
+            painter.end()
+
 
 
 import cv2
