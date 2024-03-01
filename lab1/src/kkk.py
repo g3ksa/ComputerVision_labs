@@ -5,8 +5,12 @@ from PyQt5.QtWidgets import QLabel, QApplication, QMainWindow
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QGridLayout
 import math
+from PyQt5.QtCore import Qt, QRect, QSize
+from PyQt5.QtGui import QPainter, QPen
+from PyQt5.QtWidgets import QLabel
+from PyQt5.QtGui import QCursor
 from PyQt5.QtCore import QPoint
-from PyQt5.QtWidgets import QFileDialog, QPushButton
+from PyQt5.QtWidgets import QFileDialog, QPushButton, QFrame
 from PyQt5.QtGui import QColor, QPainter, QPen, QPolygon
 
 os.environ["XDG_SESSION_TYPE"] = "xcb"
@@ -22,7 +26,8 @@ class ImageWindow(QMainWindow):
         self.image = QPixmap(image_path)
         self.label.setPixmap(self.image)
 
-        self.original_image = self.image
+        self.squareFrame = SquareFrame(self)
+        self.squareFrame.hide()
 
         self.label.setMouseTracking(True)
         self.label.mouseMoveEvent = self.mouseMoveEvent
@@ -157,15 +162,35 @@ class ImageWindow(QMainWindow):
             for x in range(width):
                 pixel = image_qimage.pixel(x, y)
                 red, green, blue, alpha = QColor(pixel).getRgb()
-                new_red = min(255, int(random.uniform(0.0, 1.0) * red + random.uniform(0.0, 1.0) * green + random.uniform(0.0, 1.0) * blue))
-                new_green = min(255, int(random.uniform(0.0, 1.0) * red + random.uniform(0.0, 1.0) * green + random.uniform(0.0, 1.0) * blue))
-                new_blue = min(255, int(random.uniform(0.0, 1.0) * red + random.uniform(0.0, 1.0) * green + random.uniform(0.0, 1.0) * blue))
+                new_red = min(
+                    255,
+                    int(
+                        random.uniform(0.0, 1.0) * red
+                        + random.uniform(0.0, 1.0) * green
+                        + random.uniform(0.0, 1.0) * blue
+                    ),
+                )
+                new_green = min(
+                    255,
+                    int(
+                        random.uniform(0.0, 1.0) * red
+                        + random.uniform(0.0, 1.0) * green
+                        + random.uniform(0.0, 1.0) * blue
+                    ),
+                )
+                new_blue = min(
+                    255,
+                    int(
+                        random.uniform(0.0, 1.0) * red
+                        + random.uniform(0.0, 1.0) * green
+                        + random.uniform(0.0, 1.0) * blue
+                    ),
+                )
                 new_color = QColor(new_red, new_green, new_blue, alpha)
                 new_image.setPixel(x, y, new_color.rgb())
 
         self.image = QPixmap.fromImage(new_image)
         self.label.setPixmap(self.image)
-
 
     def reset_to_original(self):
         self.image = QPixmap(self.original_image)
@@ -177,14 +202,19 @@ class ImageWindow(QMainWindow):
 
         pixel_color = QColor(self.image.toImage().pixel(x, y))
         rgb = f"RGB: ({pixel_color.red()}, {pixel_color.green()}, {pixel_color.blue()})"
-        brightness = int((pixel_color.red() + pixel_color.green() + pixel_color.blue()) / 3)
+        brightness = int(
+            (pixel_color.red() + pixel_color.green() + pixel_color.blue()) / 3
+        )
 
         variance = 0
         for i in range(self.image.width()):
             for j in range(self.image.height()):
                 if i == x and j == y:
                     pixel_color = QColor(self.image.toImage().pixel(i, j))
-                    brightness1 = int((pixel_color.red() + pixel_color.green() + pixel_color.blue()) / 3)
+                    brightness1 = int(
+                        (pixel_color.red() + pixel_color.green() + pixel_color.blue())
+                        / 3
+                    )
                     variance += (brightness1 - self.average_brightness) ** 2
 
         variance /= self.num_pixels
@@ -197,7 +227,7 @@ class ImageWindow(QMainWindow):
             "brightness": brightness,
             "average_brightness": self.average_brightness,
             "variance": variance,
-            "standard_deviation": standard_deviation
+            "standard_deviation": standard_deviation,
         }
 
     def show_pixel_info_window(self, pixel_info):
@@ -234,12 +264,14 @@ class ImageWindow(QMainWindow):
             self.info_window.setLayout(layout)
             self.info_window.setGeometry(100, 100, 600, 150)
 
-        text = f"Координаты пикселя: ({pixel_info['x']}, {pixel_info['y']}) | " \
-            f"Цвет: {pixel_info['rgb']} | " \
-            f"Интенсивность: {pixel_info['brightness']} | " \
-            f"Среднее значение яркости: {pixel_info['average_brightness']} | " \
-            f"Дисперсия: {pixel_info['variance']} | " \
+        text = (
+            f"Координаты пикселя: ({pixel_info['x']}, {pixel_info['y']}) | "
+            f"Цвет: {pixel_info['rgb']} | "
+            f"Интенсивность: {pixel_info['brightness']} | "
+            f"Среднее значение яркости: {pixel_info['average_brightness']} | "
+            f"Дисперсия: {pixel_info['variance']} | "
             f"Стандартное отклонение: {pixel_info['standard_deviation']}"
+        )
 
         self.info_label.setText(text)
         self.info_window.show()
@@ -256,21 +288,22 @@ class ImageWindow(QMainWindow):
             # Показываем окно с информацией о пикселе
             self.show_pixel_info_window(pixel_info)
 
-            # Отображаем треугольник вокруг курсора
-            triangle_size = 10
-            triangle_polygon = QPolygon([
-                QPoint(x, y - triangle_size),
-                QPoint(x - triangle_size, y + triangle_size),
-                QPoint(x + triangle_size, y + triangle_size)
-            ])
-            triangle_color = QColor(255, 0, 0)  # Красный треугольник
-            triangle_pen = QPen(QColor(0, 0, 0))  # Чёрная обводка
-            painter = QPainter(self.label.pixmap())
-            painter.setPen(triangle_pen)
-            painter.setBrush(triangle_color)
-            painter.drawPolygon(triangle_polygon)
-            painter.end()
+        self.squareFrame.updatePosition(x, y)  # Обновляем положение квадратного фрейма
+        self.squareFrame.show()  # Показываем квадратный фрейм
 
+    def resizeEvent(self, event):
+        self.squareFrame.hide()  # Скрываем квадратный фрейм при изменении размера окна
+        QMainWindow.resizeEvent(self, event)
+
+
+class SquareFrame(QFrame):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(13, 13)
+        self.setStyleSheet("background-color: transparent; border: 1px solid yellow;")
+
+    def updatePosition(self, x, y):
+        self.move(x - 6, y - 6)
 
 
 import cv2
