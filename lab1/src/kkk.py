@@ -1,17 +1,19 @@
 import os
 import random
 import sys
-from PyQt5.QtWidgets import QLabel, QApplication, QMainWindow
+from PyQt5.QtWidgets import QLabel, QApplication, QMainWindow, QInputDialog, QMessageBox
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QGridLayout
 import math
-from PyQt5.QtCore import Qt, QRect, QSize
 from PyQt5.QtGui import QPainter, QPen
 from PyQt5.QtWidgets import QLabel
-from PyQt5.QtGui import QCursor
 from PyQt5.QtCore import QPoint
 from PyQt5.QtWidgets import QFileDialog, QPushButton, QFrame
+import numpy as np
+from PyQt5.QtCore import QPoint, Qt
+from PyQt5.QtWidgets import QFileDialog, QPushButton
 from PyQt5.QtGui import QColor, QPainter, QPen, QPolygon
+from PyQt5.QtWidgets import QDialog, QRadioButton, QVBoxLayout, QPushButton
 
 os.environ["XDG_SESSION_TYPE"] = "xcb"
 
@@ -33,6 +35,7 @@ class ImageWindow(QMainWindow):
         self.label.mouseMoveEvent = self.mouseMoveEvent
 
         self.statusBar().showMessage("Hover over the image to see pixel coordinates")
+        self.alt_pressed = False
 
         # Среднее значение яркости
         total_brightness = 0
@@ -52,6 +55,76 @@ class ImageWindow(QMainWindow):
         )
         if file_path:
             self.image.save(file_path)
+            
+    def show_input_dialog(self):
+        img = cv2.imread("1.png", 0)
+
+        dialog = ContrastFormulaDialog(self)
+        if dialog.exec_() == QDialog.Accepted:
+            contrast_formula = dialog.get_selected_formula()
+            if contrast_formula == "окно":
+                window_size, window_ok = QInputDialog.getInt(self, "Размер окна", "Введите размер окна для расчета контрастности:")
+                if window_ok:
+                    contrast_map = self.contrast_custom_window(img, window_size)
+            else:
+                contrast_map = None
+                if contrast_formula == "4 соседа":
+                    contrast_map = self.contrast_4_neighbors(img)
+                elif contrast_formula == "8 соседей":
+                    contrast_map = self.contrast_8_neighbors(img)
+
+            if contrast_map is not None:
+                plt.figure()
+                plt.imshow(contrast_map, cmap="gray")
+                plt.colorbar()
+                plt.show()
+            else:
+                QMessageBox.warning(self, "Ошибка", "Не удалось вычислить контрастную карту")
+            
+        
+    def contrast_4_neighbors(self, img):
+        contrast_map = np.zeros_like(img, dtype=np.float32)
+        for y in range(1, img.shape[0] - 1):
+            for x in range(1, img.shape[1] - 1):
+                contrast_map[y, x] = (
+                    np.abs(int(img[y, x + 1]) - int(img[y, x]))
+                    + np.abs(int(img[y, x - 1]) - int(img[y, x]))
+                    + np.abs(int(img[y + 1, x]) - int(img[y, x]))
+                    + np.abs(int(img[y - 1, x]) - int(img[y, x]))
+                )
+        return contrast_map
+
+
+    # Функция для вычисления контрастности по 8 соседям
+    def contrast_8_neighbors(self, img):
+        contrast_map = np.zeros_like(img, dtype=np.float32)
+        for y in range(1, img.shape[0] - 1):
+            for x in range(1, img.shape[1] - 1):
+                contrast_map[y, x] = (
+                    np.abs(int(img[y, x + 1]) - int(img[y, x]))
+                    + np.abs(int(img[y, x - 1]) - int(img[y, x]))
+                    + np.abs(int(img[y + 1, x]) - int(img[y, x]))
+                    + np.abs(int(img[y - 1, x]) - int(img[y, x]))
+                    + np.abs(int(img[y + 1, x + 1]) - int(img[y, x]))
+                    + np.abs(int(img[y - 1, x - 1]) - int(img[y, x]))
+                    + np.abs(int(img[y + 1, x - 1]) - int(img[y, x]))
+                    + np.abs(int(img[y - 1, x + 1]) - int(img[y, x]))
+                )
+        return contrast_map
+
+
+    # Функция для вычисления контрастности по окну с задаваемым размером
+    def contrast_custom_window(self, img, window_size):
+        contrast_map = np.zeros_like(img, dtype=np.float32)
+        half_size = window_size // 2
+        for y in range(half_size, img.shape[0] - half_size):
+            for x in range(half_size, img.shape[1] - half_size):
+                window = img[
+                    y - half_size : y + half_size + 1, x - half_size : x + half_size + 1
+                ]
+                contrast_map[y, x] = np.std(window)
+        return contrast_map
+
 
     def decrease_intensity(self):
         image_qimage = self.image.toImage()
@@ -244,15 +317,16 @@ class ImageWindow(QMainWindow):
             buttons_data = [
                 ("Сохранить изображение", self.save_image),
                 ("Увеличение интенсивности", self.increase_intensity),
-                ("Уменьшение интенсивности", self.decrease_intensity),
                 ("Повышение контрастности", self.increase_contrast),
-                ("Уменьшение контрастности", self.decrease_contrast),
                 ("Получение негатива", self.invert_brightness),
+                ("Уменьшение интенсивности", self.decrease_intensity),
                 ("Обмен цветовых каналов", self.save_image),
+                ("Уменьшение контрастности", self.decrease_contrast),
                 ("Симметричное отображение", self.save_image),
                 ("Удаление шума", self.save_image),
                 ("Ретро фильтр", self.apply_random_filter),
                 ("Сброс", self.reset_to_original),
+                ("Расчёт контрастности",self.show_input_dialog),
             ]
 
             for i, (button_text, button_function) in enumerate(buttons_data):
@@ -280,6 +354,7 @@ class ImageWindow(QMainWindow):
         # Получаем координаты курсора
         x = event.x()
         y = event.y()
+        self.alt_pressed = event.modifiers() & Qt.AltModifier
 
         # Получаем информацию о пикселе
         pixel_info = self.get_pixel_info(x, y)
@@ -305,6 +380,37 @@ class SquareFrame(QFrame):
     def updatePosition(self, x, y):
         self.move(x - 6, y - 6)
 
+class ContrastFormulaDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Формула контрастности")
+
+        layout = QVBoxLayout()
+
+        self.four_neighbors_radio = QRadioButton("4 соседа")
+        self.eight_neighbors_radio = QRadioButton("8 соседей")
+        self.window_radio = QRadioButton("Окно")
+
+        layout.addWidget(self.four_neighbors_radio)
+        layout.addWidget(self.eight_neighbors_radio)
+        layout.addWidget(self.window_radio)
+
+        self.ok_button = QPushButton("OK")
+        self.ok_button.clicked.connect(self.accept)
+
+        layout.addWidget(self.ok_button)
+
+        self.setLayout(layout)
+
+    def get_selected_formula(self):
+        if self.four_neighbors_radio.isChecked():
+            return "4 соседа"
+        elif self.eight_neighbors_radio.isChecked():
+            return "8 соседей"
+        elif self.window_radio.isChecked():
+            return "окно"
+        else:
+            return None
 
 import cv2
 import matplotlib.pyplot as plt
