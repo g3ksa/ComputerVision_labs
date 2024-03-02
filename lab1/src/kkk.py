@@ -43,7 +43,6 @@ class ImageWindow(QMainWindow):
         self.label.mouseMoveEvent = self.mouseMoveEvent
 
         self.statusBar().showMessage("Hover over the image to see pixel coordinates")
-        self.alt_pressed = False
         self.image_path = image_path
         self.average_brightness = None
         self.num_pixels = 0
@@ -367,18 +366,23 @@ class ImageWindow(QMainWindow):
         # Получаем координаты курсора
         x = event.x()
         y = event.y()
-        self.alt_pressed = event.modifiers() & Qt.AltModifier
 
         self.squareFrame.updatePosition(
-            x, y, self.image, self.alt_pressed
+            x, y, self.image
         )  # Обновляем положение квадратного фрейма
         self.squareFrame.show()  # Показываем квадратный фрейм
-        if self.alt_pressed:
-            self.average_brightness, self.num_pixels = (
-                self.squareFrame.getAverageBrightnessAndNumPixels()
-            )
-        else:
-            self.average_brightness, self.num_pixels = 1, 1
+
+        self.average_brightness, self.num_pixels = (
+            self.squareFrame.getAverageBrightnessAndNumPixels()
+        )
+
+        self.squareFrame.updatePosition(
+            x, y, self.image
+        )  # Обновляем положение квадратного фрейма
+        self.squareFrame.show()  # Показываем квадратный фрейм
+        self.average_brightness, self.num_pixels = (
+            self.squareFrame.getAverageBrightnessAndNumPixels()
+        )
 
         # Получаем информацию о пикселе
         pixel_info = self.get_pixel_info(x, y)
@@ -399,26 +403,26 @@ class SquareFrame(QFrame):
         self.image = None
         self.average_brightness = None
 
-    def updatePosition(self, x, y, image, alt_pressed):
+    def updatePosition(self, x, y, image):
         self.move(x - 6, y - 6)
         self.image = image
-        if alt_pressed:
-            self.calculateAverageBrightness()
+        self.calculateAverageBrightness(x, y, 13, 13)
 
-    def calculateAverageBrightness(self):
+    def calculateAverageBrightness(self, x, y, size_x, size_y):
         if self.image is None:
             self.average_brightness = None
             return
 
         total_brightness = 0
         self.num_pixels = 0
-        for i in range(self.image.width()):
-            for j in range(self.image.height()):
-                pixel_color = QColor(self.image.toImage().pixel(i, j))
-                total_brightness += (
-                    pixel_color.red() + pixel_color.green() + pixel_color.blue()
-                ) / 3
-                self.num_pixels += 1
+        for i in range(x, x + size_x):
+            for j in range(y, y + size_y):
+                if 0 <= i < self.image.width() and 0 <= j < self.image.height():
+                    pixel_color = QColor(self.image.toImage().pixel(i, j))
+                    total_brightness += (
+                        pixel_color.red() + pixel_color.green() + pixel_color.blue()
+                    ) / 3
+                    self.num_pixels += 1
         self.average_brightness = int(total_brightness / self.num_pixels)
 
     def getAverageBrightnessAndNumPixels(self):
@@ -468,7 +472,9 @@ def show_histogram(img_path):
     bw = img.convert("L")
 
     # Создание ч/б представления изображения
-    fig1, ((ax0, ax1, ax2, ax3)) = plt.subplots(1, 4, figsize=(16, 10))
+    fig1, ((ax0, ax1, ax2, ax3), (ax4, ax5, ax6, ax7)) = plt.subplots(
+        2, 4, figsize=(16, 10)
+    )
     ax0.imshow(bw, cmap="gray")
     ax0.set_title("Ч/Б представление изображения")
 
@@ -492,30 +498,29 @@ def show_histogram(img_path):
     ax3.set_title("Синий канал")
 
     # Создание графика гистограммы
-    ax4 = plt.subplot2grid((2, 4), (1, 0), colspan=2, rowspan=2)
-    ax5 = plt.subplot2grid((2, 4), (1, 2), colspan=2, rowspan=2)
 
     def plot_histogram(channels, colors, ax):
-        for channel, color in zip(channels, colors):
-            hist_data = channel.histogram()
-            ax.hist(
-                hist_data,
+        for channel, color, axes in zip(channels, colors, ax):
+            # hist_data = channel.histogram()
+            # hist_data = [0] + hist_data[:]
+            axes.hist(
+                channel,
                 bins=256,
                 range=(0, 256),
-                histtype="step",
+                histtype="bar",
                 color=color,
                 label=f"{color} канал",
             )
-        ax.set_title("Гистограмма яркости")
-        ax.set_xlabel("Яркость")
-        ax.set_ylabel("Частота")
-        ax.set_xticks(np.arange(0, 256, 20))
-        ax.legend()
+            axes.set_title("Гистограмма яркости")
+            axes.set_xlabel("Яркость")
+            axes.set_ylabel("Частота")
+            axes.set_xticks(np.arange(0, 256, 20))
+            axes.legend()
 
     plot_histogram(
-        [red_channel_bw, green_channel_bw, blue_channel_bw],
+        [red_data, green_data, blue_data],
         ["red", "green", "blue"],
-        ax4,
+        [ax4, ax5, ax6],
     )
 
     image = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
@@ -523,11 +528,11 @@ def show_histogram(img_path):
     # Функция для обновления профиля яркости по выбранной строке
     def update_brightness_profile(row_number):
         brightness_profile = image[row_number, :]
-        ax5.clear()
-        ax5.plot(brightness_profile, color="b")
-        ax5.set_title("Профиль яркости выбранной строки")
-        ax5.set_xlabel("Пиксели")
-        ax5.set_ylabel("Яркость")
+        ax7.clear()
+        ax7.plot(brightness_profile, color="b")
+        ax7.set_title("Профиль яркости выбранной строки")
+        ax7.set_xlabel("Пиксели")
+        ax7.set_ylabel("Яркость")
 
     # Ползунок для выбора строки
     ax_row = plt.axes(
@@ -546,7 +551,7 @@ def show_histogram(img_path):
     # Инициализация графика профиля яркости
     update_brightness_profile(0)
 
-    plt.subplots_adjust(left=0.1, right=0.9, bottom=0.1, top=1.2, hspace=2.5)
+    plt.subplots_adjust(left=0.1, right=0.9, bottom=0.1, top=1.2)
 
     plt.show()
 
