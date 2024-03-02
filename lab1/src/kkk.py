@@ -1,19 +1,26 @@
 import os
 import random
 import sys
-from PyQt5.QtWidgets import QLabel, QApplication, QMainWindow, QInputDialog, QMessageBox
-from PyQt5.QtGui import QPixmap, QImage
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QGridLayout
 import math
-from PyQt5.QtGui import QPainter, QPen
-from PyQt5.QtWidgets import QLabel
-from PyQt5.QtCore import QPoint
-from PyQt5.QtWidgets import QFileDialog, QPushButton, QFrame
 import numpy as np
-from PyQt5.QtCore import QPoint, Qt
-from PyQt5.QtWidgets import QFileDialog, QPushButton
-from PyQt5.QtGui import QColor, QPainter, QPen, QPolygon
-from PyQt5.QtWidgets import QDialog, QRadioButton, QVBoxLayout, QPushButton
+from PIL import Image
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor, QPixmap, QImage
+from PyQt5.QtWidgets import (
+    QLabel,
+    QApplication,
+    QMainWindow,
+    QInputDialog,
+    QMessageBox,
+    QWidget,
+    QVBoxLayout,
+    QGridLayout,
+    QDialog,
+    QRadioButton,
+    QPushButton,
+    QFileDialog,
+    QFrame,
+)
 
 os.environ["XDG_SESSION_TYPE"] = "xcb"
 
@@ -55,7 +62,7 @@ class ImageWindow(QMainWindow):
         )
         if file_path:
             self.image.save(file_path)
-            
+
     def show_input_dialog(self):
         img = cv2.imread("1.png", 0)
 
@@ -63,7 +70,11 @@ class ImageWindow(QMainWindow):
         if dialog.exec_() == QDialog.Accepted:
             contrast_formula = dialog.get_selected_formula()
             if contrast_formula == "окно":
-                window_size, window_ok = QInputDialog.getInt(self, "Размер окна", "Введите размер окна для расчета контрастности:")
+                window_size, window_ok = QInputDialog.getInt(
+                    self,
+                    "Размер окна",
+                    "Введите размер окна для расчета контрастности:",
+                )
                 if window_ok:
                     contrast_map = self.contrast_custom_window(img, window_size)
             else:
@@ -79,9 +90,10 @@ class ImageWindow(QMainWindow):
                 plt.colorbar()
                 plt.show()
             else:
-                QMessageBox.warning(self, "Ошибка", "Не удалось вычислить контрастную карту")
-            
-        
+                QMessageBox.warning(
+                    self, "Ошибка", "Не удалось вычислить контрастную карту"
+                )
+
     def contrast_4_neighbors(self, img):
         contrast_map = np.zeros_like(img, dtype=np.float32)
         for y in range(1, img.shape[0] - 1):
@@ -93,7 +105,6 @@ class ImageWindow(QMainWindow):
                     + np.abs(int(img[y - 1, x]) - int(img[y, x]))
                 )
         return contrast_map
-
 
     # Функция для вычисления контрастности по 8 соседям
     def contrast_8_neighbors(self, img):
@@ -112,7 +123,6 @@ class ImageWindow(QMainWindow):
                 )
         return contrast_map
 
-
     # Функция для вычисления контрастности по окну с задаваемым размером
     def contrast_custom_window(self, img, window_size):
         contrast_map = np.zeros_like(img, dtype=np.float32)
@@ -124,7 +134,6 @@ class ImageWindow(QMainWindow):
                 ]
                 contrast_map[y, x] = np.std(window)
         return contrast_map
-
 
     def decrease_intensity(self):
         image_qimage = self.image.toImage()
@@ -315,18 +324,18 @@ class ImageWindow(QMainWindow):
             button_layout = QGridLayout()
 
             buttons_data = [
-                ("Сохранить изображение", self.save_image),
-                ("Увеличение интенсивности", self.increase_intensity),
-                ("Повышение контрастности", self.increase_contrast),
-                ("Получение негатива", self.invert_brightness),
                 ("Уменьшение интенсивности", self.decrease_intensity),
-                ("Обмен цветовых каналов", self.save_image),
+                ("Увеличение интенсивности", self.increase_intensity),
                 ("Уменьшение контрастности", self.decrease_contrast),
+                ("Увеличение контрастности", self.increase_contrast),
+                ("Получение негатива", self.invert_brightness),
+                ("Обмен цветовых каналов", self.save_image),
                 ("Симметричное отображение", self.save_image),
                 ("Удаление шума", self.save_image),
                 ("Ретро фильтр", self.apply_random_filter),
+                ("Расчёт контрастности", self.show_input_dialog),
                 ("Сброс", self.reset_to_original),
-                ("Расчёт контрастности",self.show_input_dialog),
+                ("Сохранить изображение", self.save_image),
             ]
 
             for i, (button_text, button_function) in enumerate(buttons_data):
@@ -380,6 +389,7 @@ class SquareFrame(QFrame):
     def updatePosition(self, x, y):
         self.move(x - 6, y - 6)
 
+
 class ContrastFormulaDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -412,9 +422,99 @@ class ContrastFormulaDialog(QDialog):
         else:
             return None
 
+
 import cv2
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
+
+
+def show_histogram(img_path):
+    img = Image.open(img_path)
+    bw = img.convert("L")
+
+    # Создание ч/б представления изображения
+    fig1, ((ax0, ax1, ax2, ax3)) = plt.subplots(1, 4, figsize=(16, 16))
+    ax0.imshow(bw, cmap="gray")
+    ax0.set_title("Ч/Б представление изображения")
+
+    red_data = [r for r, _, _ in img.getdata()]
+    green_data = [g for _, g, _ in img.getdata()]
+    blue_data = [b for _, _, b in img.getdata()]
+
+    red_channel_bw = Image.new("L", img.size)
+    red_channel_bw.putdata(red_data)
+    ax1.imshow(red_channel_bw, cmap="gray")
+    ax1.set_title("Красный канал")
+
+    green_channel_bw = Image.new("L", img.size)
+    green_channel_bw.putdata(green_data)
+    ax2.imshow(green_channel_bw, cmap="gray")
+    ax2.set_title("Зеленый канал")
+
+    blue_channel_bw = Image.new("L", img.size)
+    blue_channel_bw.putdata(blue_data)
+    ax3.imshow(blue_channel_bw, cmap="gray")
+    ax3.set_title("Синий канал")
+
+    # Создание графика гистограммы
+    ax4 = plt.subplot2grid((2, 4), (1, 0), colspan=2, rowspan=2)
+    ax5 = plt.subplot2grid((2, 4), (1, 2), colspan=2, rowspan=2)
+
+    def plot_histogram(channels, colors, ax):
+        for channel, color in zip(channels, colors):
+            hist_data = channel.histogram()
+            ax.hist(
+                hist_data,
+                bins=256,
+                range=(0, 256),
+                histtype="step",
+                color=color,
+                label=f"{color} канал",
+            )
+        ax.set_title("Гистограмма яркости")
+        ax.set_xlabel("Яркость")
+        ax.set_ylabel("Частота")
+        ax.set_xticks(np.arange(0, 256, 20))
+        ax.legend()
+
+    plot_histogram(
+        [red_channel_bw, green_channel_bw, blue_channel_bw],
+        ["red", "green", "blue"],
+        ax4,
+    )
+
+    image = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+
+    # Функция для обновления профиля яркости по выбранной строке
+    def update_brightness_profile(row_number):
+        brightness_profile = image[row_number, :]
+        ax5.clear()
+        ax5.plot(brightness_profile, color="b")
+        ax5.set_title("Профиль яркости выбранной строки")
+        ax5.set_xlabel("Пиксели")
+        ax5.set_ylabel("Яркость")
+
+    # Ползунок для выбора строки
+    ax_row = plt.axes(
+        [0.5, 0.01, 0.4, 0.03]
+    )  # Измененные координаты и размеры для слайдера
+    slider_row = Slider(ax_row, "Строка", 0, image.shape[0] - 1, valinit=0, valstep=1)
+
+    # Обработчик изменения значения ползунка
+    def on_slider_change(val):
+        row_number = int(slider_row.val)
+        update_brightness_profile(row_number)
+        fig1.canvas.draw_idle()
+
+    slider_row.on_changed(on_slider_change)
+
+    # Инициализация графика профиля яркости
+    update_brightness_profile(0)
+
+    plt.subplots_adjust(left=0.1, right=0.9, bottom=0.1, top=1.5, hspace=2.5)
+
+    plt.show()
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
@@ -424,37 +524,4 @@ if __name__ == "__main__":
     # Загрузка изображения
     image = cv2.imread("1.png", cv2.IMREAD_GRAYSCALE)
 
-    # Создание графического окна
-    fig, ax = plt.subplots()
-    plt.subplots_adjust(bottom=0.25)
-
-    # Инициализация начальной строки для анализа (в данном случае - центральная строка)
-    initial_row_number = image.shape[0] // 2
-
-    # Функция для обновления профиля яркости по выбранной строке
-    def update_brightness_profile(row_number):
-        brightness_profile = image[row_number, :]
-        ax.clear()
-        ax.plot(brightness_profile, color="b")
-        ax.set_title("Яркостный профиль выбранной строки")
-        ax.set_xlabel("Пиксели")
-        ax.set_ylabel("Яркость")
-        fig.canvas.draw_idle()
-
-    # Ползунок для выбора строки
-    ax_row = plt.axes([0.1, 0.1, 0.8, 0.03])
-    slider_row = Slider(
-        ax_row, "Строка", 0, image.shape[0] - 1, valinit=initial_row_number, valstep=1
-    )
-
-    # Обработчик изменения значения ползунка
-    def on_slider_change(val):
-        row_number = int(slider_row.val)
-        update_brightness_profile(row_number)
-
-    slider_row.on_changed(on_slider_change)
-
-    # Инициализация графика профиля яркости
-    update_brightness_profile(initial_row_number)
-
-    plt.show()
+    show_histogram("1.png")
