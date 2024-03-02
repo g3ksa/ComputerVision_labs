@@ -23,8 +23,6 @@ from PyQt5.QtWidgets import (
 )
 
 os.environ["XDG_SESSION_TYPE"] = "xcb"
-
-
 class ImageWindow(QMainWindow):
     def __init__(self, image_path):
         super().__init__()
@@ -339,6 +337,14 @@ class ImageWindow(QMainWindow):
                 ("Расчёт контрастности", self.show_input_dialog),
                 ("Сброс", self.reset_to_original),
                 ("Сохранить изображение", self.save_image),
+                ("Увеличение яркости", self.increase_intensity),
+                ("Уменьшение яркости", self.decrease_intensity),
+                ("Увеличение красного", self.increase_red),
+                ("Уменьшение красного", self.decrease_red),
+                ("Увеличение зеленого", self.increase_green),
+                ("Уменьшение зеленого", self.decrease_green),
+                ("Увеличение синего", self.increase_blue),
+                ("Уменьшение синего", self.decrease_blue),
             ]
 
             for i, (button_text, button_function) in enumerate(buttons_data):
@@ -361,6 +367,111 @@ class ImageWindow(QMainWindow):
 
         self.info_label.setText(text)
         self.info_window.show()
+
+    def increase_red(self):
+        image_qimage = self.image.toImage()
+        width, height = image_qimage.width(), image_qimage.height()
+        new_image = QImage(width, height, QImage.Format_ARGB32)
+
+        for y in range(height):
+            for x in range(width):
+                pixel = image_qimage.pixel(x, y)
+                red, green, blue, alpha = QColor(pixel).getRgb()
+                new_red = min(red + 50, 255)
+                new_color = QColor(new_red, green, blue, alpha)
+                new_image.setPixel(x, y, new_color.rgb())
+
+        self.image = QPixmap(new_image)
+        self.label.setPixmap(self.image)
+
+    def decrease_red(self):
+        image_qimage = self.image.toImage()
+        width, height = image_qimage.width(), image_qimage.height()
+        new_image = QImage(width, height, QImage.Format_ARGB32)
+
+        for y in range(height):
+            for x in range(width):
+                pixel = image_qimage.pixel(x, y)
+                red, green, blue, alpha = QColor(pixel).getRgb()
+                new_red = max(red - 50, 0)
+                new_color = QColor(new_red, green, blue, alpha)
+                new_image.setPixel(x, y, new_color.rgb())
+
+        self.image = QPixmap(new_image)
+        self.label.setPixmap(self.image)
+        
+        
+
+    def increase_green(self):
+        image_qimage = self.image.toImage()
+        width, height = image_qimage.width(), image_qimage.height()
+        new_image = QImage(width, height, QImage.Format_ARGB32)
+
+        for y in range(height):
+            for x in range(width):
+                pixel = image_qimage.pixel(x, y)
+                red, green, blue, alpha = QColor(pixel).getRgb()
+                new_green = min(green + 50, 255)
+                new_color = QColor(red, new_green, blue, alpha)
+                new_image.setPixel(x, y, new_color.rgb())
+
+        self.image = QPixmap(new_image)
+        self.label.setPixmap(self.image)
+
+    def decrease_green(self):
+        image_qimage = self.image.toImage()
+        width, height = image_qimage.width(), image_qimage.height()
+        new_image = QImage(width, height, QImage.Format_ARGB32)
+
+        for y in range(height):
+            for x in range(width):
+                pixel = image_qimage.pixel(x, y)
+                red, green, blue, alpha = QColor(pixel).getRgb()
+                new_green = max(green - 50, 0)
+                new_color = QColor(red, new_green, blue, alpha)
+                new_image.setPixel(x, y, new_color.rgb())
+
+        self.image = QPixmap(new_image)
+        self.label.setPixmap(self.image)
+
+
+    def increase_blue(self):
+        image_qimage = self.image.toImage()
+        width, height = image_qimage.width(), image_qimage.height()
+        new_image = QImage(width, height, QImage.Format_ARGB32)
+
+        for y in range(height):
+            for x in range(width):
+                pixel = image_qimage.pixel(x, y)
+                red, green, blue, alpha = QColor(pixel).getRgb()
+                new_blue = min(blue + 50, 255)
+                new_color = QColor(red, green, new_blue, alpha)
+                new_image.setPixel(x, y, new_color.rgb())
+
+        self.image = QPixmap(new_image)
+        self.label.setPixmap(self.image)
+
+    def decrease_blue(self):
+        image_qimage = self.image.toImage()
+        width, height = image_qimage.width(), image_qimage.height()
+        new_image = QImage(width, height, QImage.Format_ARGB32)
+
+        for y in range(height):
+            for x in range(width):
+                pixel = image_qimage.pixel(x, y)
+                red, green, blue, alpha = QColor(pixel).getRgb()
+                new_blue = max(blue - 50, 0)
+                new_color = QColor(red, green, new_blue, alpha)
+                new_image.setPixel(x, y, new_color.rgb())
+
+        self.image = QPixmap(new_image)
+        self.label.setPixmap(self.image)
+        
+
+    
+    
+
+
 
     def mouseMoveEvent(self, event):
         # Получаем координаты курсора
