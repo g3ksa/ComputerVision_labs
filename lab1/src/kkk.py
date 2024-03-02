@@ -433,7 +433,7 @@ def show_histogram(img_path):
     bw = img.convert("L")
 
     # Создание ч/б представления изображения
-    fig1, ((ax0, ax1, ax2, ax3)) = plt.subplots(1, 4, figsize=(16, 16))
+    fig1, ((ax0, ax1, ax2, ax3)) = plt.subplots(1, 4, figsize=(16, 10))
     ax0.imshow(bw, cmap="gray")
     ax0.set_title("Ч/Б представление изображения")
 
@@ -511,7 +511,7 @@ def show_histogram(img_path):
     # Инициализация графика профиля яркости
     update_brightness_profile(0)
 
-    plt.subplots_adjust(left=0.1, right=0.9, bottom=0.1, top=1.5, hspace=2.5)
+    plt.subplots_adjust(left=0.1, right=0.9, bottom=0.1, top=1.2, hspace=2.5)
 
     plt.show()
 
