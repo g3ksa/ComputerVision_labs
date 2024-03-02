@@ -45,18 +45,8 @@ class ImageWindow(QMainWindow):
         self.statusBar().showMessage("Hover over the image to see pixel coordinates")
         self.alt_pressed = False
         self.image_path = image_path
-
-        # Среднее значение яркости
-        total_brightness = 0
+        self.average_brightness = None
         self.num_pixels = 0
-        for i in range(self.image.width()):
-            for j in range(self.image.height()):
-                pixel_color = QColor(self.image.toImage().pixel(i, j))
-                total_brightness += int(
-                    (pixel_color.red() + pixel_color.green() + pixel_color.blue()) / 3
-                )
-                self.num_pixels += 1
-        self.average_brightness = int(total_brightness / self.num_pixels)
 
         self.show_pixel_info_window(
             {
@@ -379,15 +369,18 @@ class ImageWindow(QMainWindow):
         y = event.y()
         self.alt_pressed = event.modifiers() & Qt.AltModifier
 
+        self.squareFrame.updatePosition(x, y, self.image, self.alt_pressed)  # Обновляем положение квадратного фрейма
+        self.squareFrame.show()  # Показываем квадратный фрейм
+        if self.alt_pressed:
+            self.average_brightness, self.num_pixels = self.squareFrame.getAverageBrightnessAndNumPixels()
+        else:
+            self.average_brightness, self.num_pixels = 1, 1
+
         # Получаем информацию о пикселе
         pixel_info = self.get_pixel_info(x, y)
-
+        
         if pixel_info:
-            # Показываем окно с информацией о пикселе
             self.show_pixel_info_window(pixel_info)
-
-        self.squareFrame.updatePosition(x, y)  # Обновляем положение квадратного фрейма
-        self.squareFrame.show()  # Показываем квадратный фрейм
 
     def resizeEvent(self, event):
         self.squareFrame.hide()  # Скрываем квадратный фрейм при изменении размера окна
@@ -399,10 +392,32 @@ class SquareFrame(QFrame):
         super().__init__(parent)
         self.setFixedSize(13, 13)
         self.setStyleSheet("background-color: transparent; border: 1px solid yellow;")
+        self.image = None
+        self.average_brightness = None
 
-    def updatePosition(self, x, y):
+    def updatePosition(self, x, y, image, alt_pressed):
         self.move(x - 6, y - 6)
+        self.image = image
+        if alt_pressed:
+            self.calculateAverageBrightness()
 
+    def calculateAverageBrightness(self):
+        if self.image is None:
+            self.average_brightness = None
+            return
+
+        total_brightness = 0
+        self.num_pixels = 0
+        for i in range(self.image.width()):
+            for j in range(self.image.height()):
+                pixel_color = QColor(self.image.toImage().pixel(i, j))
+                total_brightness += (pixel_color.red() + pixel_color.green() + pixel_color.blue()) / 3
+                self.num_pixels += 1
+        self.average_brightness = int(total_brightness / self.num_pixels)
+        
+        
+    def getAverageBrightnessAndNumPixels(self):
+        return self.average_brightness, self.num_pixels
 
 class ContrastFormulaDialog(QDialog):
     def __init__(self, parent=None):
