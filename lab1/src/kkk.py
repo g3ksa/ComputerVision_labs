@@ -43,6 +43,7 @@ class ImageWindow(QMainWindow):
 
         self.statusBar().showMessage("Hover over the image to see pixel coordinates")
         self.alt_pressed = False
+        self.image_path = image_path
 
         # Среднее значение яркости
         total_brightness = 0
@@ -64,7 +65,7 @@ class ImageWindow(QMainWindow):
             self.image.save(file_path)
 
     def show_input_dialog(self):
-        img = cv2.imread("1.png", 0)
+        img = cv2.imread(self.image_path, 0)
 
         dialog = ContrastFormulaDialog(self)
         if dialog.exec_() == QDialog.Accepted:
@@ -518,10 +519,15 @@ def show_histogram(img_path):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = ImageWindow("1.png")
-    window.show()
 
-    # Загрузка изображения
-    image = cv2.imread("1.png", cv2.IMREAD_GRAYSCALE)
+    file_dialog = QFileDialog()
+    file_dialog.setFileMode(QFileDialog.ExistingFile)
+    file_dialog.setNameFilter("Images (*.png *.jpg *.bmp)")
+    file_path, _ = file_dialog.getOpenFileName()
 
-    show_histogram("1.png")
+    if file_path:
+        window = ImageWindow(file_path)
+        window.show()
+
+
+        show_histogram(file_path)
