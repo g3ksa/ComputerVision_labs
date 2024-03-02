@@ -34,6 +34,7 @@ class ImageWindow(QMainWindow):
 
         self.image = QPixmap(image_path)
         self.label.setPixmap(self.image)
+        self.original_image = self.image
 
         self.squareFrame = SquareFrame(self)
         self.squareFrame.hide()
@@ -56,6 +57,18 @@ class ImageWindow(QMainWindow):
                 )
                 self.num_pixels += 1
         self.average_brightness = int(total_brightness / self.num_pixels)
+
+        self.show_pixel_info_window(
+            {
+                "x": 0,
+                "y": 0,
+                "rgb": "RGB: (0, 0, 0)",
+                "brightness": 0,
+                "average_brightness": self.average_brightness,
+                "variance": 0,
+                "standard_deviation": 0,
+            }
+        )
 
     def save_image(self):
         file_path, _ = QFileDialog.getSaveFileName(
@@ -333,7 +346,7 @@ class ImageWindow(QMainWindow):
                 ("Обмен цветовых каналов", self.save_image),
                 ("Симметричное отображение", self.save_image),
                 ("Удаление шума", self.save_image),
-                ("Ретро фильтр", self.apply_random_filter),
+                ("Рандом фильтр", self.apply_random_filter),
                 ("Расчёт контрастности", self.show_input_dialog),
                 ("Сброс", self.reset_to_original),
                 ("Сохранить изображение", self.save_image),
@@ -518,16 +531,18 @@ def show_histogram(img_path):
 
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
+    try:
+        app = QApplication(sys.argv)
 
-    file_dialog = QFileDialog()
-    file_dialog.setFileMode(QFileDialog.ExistingFile)
-    file_dialog.setNameFilter("Images (*.png *.jpg *.bmp)")
-    file_path, _ = file_dialog.getOpenFileName()
+        file_dialog = QFileDialog()
+        file_dialog.setFileMode(QFileDialog.ExistingFile)
+        file_dialog.setNameFilter("Images (*.png *.jpg *.bmp)")
+        file_path, _ = file_dialog.getOpenFileName()
 
-    if file_path:
-        window = ImageWindow(file_path)
-        window.show()
-
-
-        show_histogram(file_path)
+        if file_path:
+            window = ImageWindow(file_path)
+            window.show()
+            show_histogram(file_path)
+    except Exception as e:
+        QMessageBox.critical(None, "Error", str(e))
+        os.execv(sys.executable, [sys.executable] + sys.argv)
