@@ -518,16 +518,18 @@ def show_histogram(img_path):
 
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
+    try:
+        app = QApplication(sys.argv)
 
-    file_dialog = QFileDialog()
-    file_dialog.setFileMode(QFileDialog.ExistingFile)
-    file_dialog.setNameFilter("Images (*.png *.jpg *.bmp)")
-    file_path, _ = file_dialog.getOpenFileName()
+        file_dialog = QFileDialog()
+        file_dialog.setFileMode(QFileDialog.ExistingFile)
+        file_dialog.setNameFilter("Images (*.png *.jpg *.bmp)")
+        file_path, _ = file_dialog.getOpenFileName()
 
-    if file_path:
-        window = ImageWindow(file_path)
-        window.show()
-
-
-        show_histogram(file_path)
+        if file_path:
+            window = ImageWindow(file_path)
+            window.show()
+            show_histogram(file_path)
+    except Exception as e:
+        QMessageBox.critical(None, "Error", str(e))
+        os.execv(sys.executable, [sys.executable] + sys.argv)
