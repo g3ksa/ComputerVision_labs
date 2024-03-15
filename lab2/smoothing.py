@@ -65,7 +65,13 @@ class ImageSmoothingApp(QWidget):
         bytes_per_line = width
         q_img = QImage(image.data, width, height, bytes_per_line, QImage.Format_Grayscale8)
         pixmap = QPixmap(q_img)
-        label_widget.setPixmap(pixmap.scaledToWidth(400))
+        pixmap = pixmap.scaledToWidth(400)
+        if label_widget is self.image_label:
+            self.image = image
+        elif label_widget is self.result_label:
+            self.smoothed_image = image
+        label_widget.setPixmap(pixmap)
+
 
     def apply_filter(self, filter_func, size=None, sigma=None):
         if self.image is None:
@@ -74,7 +80,7 @@ class ImageSmoothingApp(QWidget):
             self.smoothed_image = filter_func(self.image, size)
         elif sigma:
             self.smoothed_image = filter_func(self.image, sigma)
-        self.display_image(self.smoothed_image, self.result_label)
+        self.display_image(self.smoothed_image, self.image_label)
 
     def apply_rectangular_filter(self, image, size):
         height, width = image.shape
@@ -114,7 +120,7 @@ class ImageSmoothingApp(QWidget):
         mask = diff < 2 * sigma
         smoothed_image = np.where(mask, blurred, image)
         return smoothed_image
-    
+
     def calculate_sharpness(self, image):
         sobelx = cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=3)
         sobely = cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=3)
