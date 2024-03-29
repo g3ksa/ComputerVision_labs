@@ -23,6 +23,8 @@ from PyQt5.QtWidgets import (
 )
 
 os.environ["XDG_SESSION_TYPE"] = "xcb"
+
+
 class ImageWindow(QMainWindow):
     def __init__(self, image_path):
         super().__init__()
@@ -337,14 +339,14 @@ class ImageWindow(QMainWindow):
                 ("Расчёт контрастности", self.show_input_dialog),
                 ("Сброс", self.reset_to_original),
                 ("Сохранить изображение", self.save_image),
-                ("Увеличение яркости", self.increase_intensity),
                 ("Уменьшение яркости", self.decrease_intensity),
-                ("Увеличение красного", self.increase_red),
+                ("Увеличение яркости", self.increase_intensity),
                 ("Уменьшение красного", self.decrease_red),
-                ("Увеличение зеленого", self.increase_green),
+                ("Увеличение красного", self.increase_red),
                 ("Уменьшение зеленого", self.decrease_green),
-                ("Увеличение синего", self.increase_blue),
+                ("Увеличение зеленого", self.increase_green),
                 ("Уменьшение синего", self.decrease_blue),
+                ("Увеличение синего", self.increase_blue),
             ]
 
             for i, (button_text, button_function) in enumerate(buttons_data):
@@ -399,8 +401,6 @@ class ImageWindow(QMainWindow):
 
         self.image = QPixmap(new_image)
         self.label.setPixmap(self.image)
-        
-        
 
     def increase_green(self):
         image_qimage = self.image.toImage()
@@ -434,7 +434,6 @@ class ImageWindow(QMainWindow):
         self.image = QPixmap(new_image)
         self.label.setPixmap(self.image)
 
-
     def increase_blue(self):
         image_qimage = self.image.toImage()
         width, height = image_qimage.width(), image_qimage.height()
@@ -466,12 +465,6 @@ class ImageWindow(QMainWindow):
 
         self.image = QPixmap(new_image)
         self.label.setPixmap(self.image)
-        
-
-    
-    
-
-
 
     def mouseMoveEvent(self, event):
         # Получаем координаты курсора
