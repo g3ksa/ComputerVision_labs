@@ -57,6 +57,9 @@ class ImageSmoothingApp(QWidget):
         self.calculate_sharpness_button = QPushButton("Calculate Sharpness", self)
         self.calculate_sharpness_button.clicked.connect(self.calculate_sharpness)
 
+        self.add_noise_button = QPushButton("Add Noise", self)
+        self.add_noise_button.clicked.connect(self.add_noise)
+
         grid = QGridLayout()
         grid.addWidget(self.load_button, 0, 0)
         grid.addWidget(self.reset_image_button, 0, 1)
@@ -65,6 +68,7 @@ class ImageSmoothingApp(QWidget):
         grid.addWidget(self.gaussian_filter_button, 2, 0)
         grid.addWidget(self.sigma_filter_button, 2, 1)
         grid.addWidget(self.calculate_sharpness_button, 3, 0)
+        grid.addWidget(self.add_noise_button, 3, 1)
         grid.addWidget(self.rect_filter_button_5x5, 4, 0)
         grid.addWidget(self.median_filter_button_5x5, 4, 1)
         grid.addWidget(self.image_label, 5, 0, 1, 2)
@@ -78,6 +82,7 @@ class ImageSmoothingApp(QWidget):
         self.gaussian_filter_button.setVisible(False)
         self.sigma_filter_button.setVisible(False)
         self.calculate_sharpness_button.setVisible(False)
+        self.add_noise_button.setVisible(False)
 
         self.rect_filter_button_5x5.setVisible(False)
         self.median_filter_button_5x5.setVisible(False)
@@ -98,6 +103,7 @@ class ImageSmoothingApp(QWidget):
             self.calculate_sharpness_button.setVisible(True)
             self.rect_filter_button_5x5.setVisible(True)
             self.median_filter_button_5x5.setVisible(True)
+            self.add_noise_button.setVisible(True)
 
     def display_image(self, image, label_widget):
         height, width = image.shape[:2]
@@ -117,6 +123,11 @@ class ImageSmoothingApp(QWidget):
         self.image = self.raw_image
         self.display_image(self.image, self.image_label)
 
+
+    def add_noise(self):
+        noise = np.random.randint(0, 256 * 0.3, size=self.image.shape, dtype=np.uint8)
+        self.image = np.clip(self.image + noise, 0, 255).astype(np.uint8)
+        self.display_image(self.image, self.image_label)
 
     def apply_filter(self, filter_func, size=None, sigma=None):
         if self.image is None:
@@ -202,11 +213,11 @@ class ImageSmoothingApp(QWidget):
         return smoothed_image
 
     def calculate_sharpness(self):
-        if self.smoothed_image is None:
+        if self.image is None:
             return
 
-        sobelx = self.sobel_filter(self.smoothed_image, "x")
-        sobely = self.sobel_filter(self.smoothed_image, "y")
+        sobelx = self.sobel_filter(self.image, "x")
+        sobely = self.sobel_filter(self.image, "y")
         gradient_magnitude = np.sqrt(sobelx**2 + sobely**2)
         sharpness = np.mean(gradient_magnitude)
 
