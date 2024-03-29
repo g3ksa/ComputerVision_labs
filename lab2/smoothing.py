@@ -1,7 +1,7 @@
 import sys
 import cv2
 import numpy as np
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QPushButton, QFileDialog, QMessageBox
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGridLayout, QPushButton, QFileDialog, QMessageBox, QInputDialog
 from PyQt5.QtGui import QPixmap, QImage
 
 class ImageSmoothingApp(QWidget):
@@ -12,6 +12,9 @@ class ImageSmoothingApp(QWidget):
         self.result_label = QLabel(self)
         self.load_button = QPushButton('Load Image', self)
         self.load_button.clicked.connect(self.load_image)
+
+        self.reset_image_button = QPushButton('Reset Image', self)
+        self.reset_image_button.clicked.connect(self.reset_image)
 
         self.rect_filter_button = QPushButton('Apply Rectangular Filter (3x3)', self)
         self.rect_filter_button.clicked.connect(lambda: self.apply_filter(self.apply_rectangular_filter, size=3))
@@ -25,27 +28,28 @@ class ImageSmoothingApp(QWidget):
         self.median_filter_button_5x5 = QPushButton('Apply Median Filter (5x5)', self)
         self.median_filter_button_5x5.clicked.connect(lambda: self.apply_filter(self.apply_median_filter, size=5))
 
-        self.gaussian_filter_button = QPushButton('Apply Gaussian Filter (σ=1)', self)
-        self.gaussian_filter_button.clicked.connect(lambda: self.apply_filter(self.apply_gaussian_filter, sigma=1))
+        self.gaussian_filter_button = QPushButton('Apply Gaussian Filter', self)
+        self.gaussian_filter_button.clicked.connect(self.apply_gaussian_filter_with_dialog)
 
-        self.sigma_filter_button = QPushButton('Apply Sigma Filter (σ=1)', self)
-        self.sigma_filter_button.clicked.connect(lambda: self.apply_filter(self.apply_sigma_filter, sigma=1))
+        self.sigma_filter_button = QPushButton('Apply Sigma Filter', self)
+        self.sigma_filter_button.clicked.connect(self.apply_sigma_filter_with_dialog)
 
         self.calculate_sharpness_button = QPushButton('Calculate Sharpness', self)
         self.calculate_sharpness_button.clicked.connect(self.calculate_sharpness)
 
-        self.layout = QVBoxLayout()
-        self.layout.addWidget(self.load_button)
-        self.layout.addWidget(self.rect_filter_button)
-        self.layout.addWidget(self.median_filter_button)
-        self.layout.addWidget(self.gaussian_filter_button)
-        self.layout.addWidget(self.sigma_filter_button)
-        self.layout.addWidget(self.calculate_sharpness_button)
-        self.layout.addWidget(self.rect_filter_button_5x5)
-        self.layout.addWidget(self.median_filter_button_5x5)
-        self.layout.addWidget(self.image_label)
-        self.layout.addWidget(self.result_label)
-        self.setLayout(self.layout)
+        grid = QGridLayout()
+        grid.addWidget(self.load_button, 0, 0)
+        grid.addWidget(self.reset_image_button, 0, 1)
+        grid.addWidget(self.rect_filter_button, 1, 0)
+        grid.addWidget(self.median_filter_button, 1, 1)
+        grid.addWidget(self.gaussian_filter_button, 2, 0)
+        grid.addWidget(self.sigma_filter_button, 2, 1)
+        grid.addWidget(self.calculate_sharpness_button, 3, 0)
+        grid.addWidget(self.rect_filter_button_5x5, 4, 0)
+        grid.addWidget(self.median_filter_button_5x5, 4, 1)
+        grid.addWidget(self.image_label, 5, 0, 1, 2)
+        grid.addWidget(self.result_label, 6, 0, 1, 2)
+        self.setLayout(grid)
         self.image = None
         self.smoothed_image = None
 
@@ -64,6 +68,7 @@ class ImageSmoothingApp(QWidget):
         file_path, _ = file_dialog.getOpenFileName(self, 'Open Image File', '', 'Image Files (*.png *.jpg *.jpeg *.bmp)')
         if file_path:
             self.image = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
+            self.raw_image = self.image
             self.display_image(self.image, self.image_label)
             self.rect_filter_button.setVisible(True)
             self.median_filter_button.setVisible(True)
@@ -84,6 +89,10 @@ class ImageSmoothingApp(QWidget):
         elif label_widget is self.result_label:
             self.smoothed_image = image
         label_widget.setPixmap(pixmap)
+
+    def reset_image(self):
+        self.image = self.raw_image
+        self.display_image(self.image, self.image_label)
 
 
     def apply_filter(self, filter_func, size=None, sigma=None):
@@ -116,6 +125,16 @@ class ImageSmoothingApp(QWidget):
         return smoothed_image
 
 
+    def apply_gaussian_filter_with_dialog(self):
+        sigma, ok = QInputDialog.getDouble(self, 'Sigma', 'Enter sigma', value=1)
+        if ok:
+            self.apply_filter(self.apply_gaussian_filter, sigma=sigma)
+
+    def apply_sigma_filter_with_dialog(self):
+        sigma, ok = QInputDialog.getDouble(self, 'Sigma', 'Enter sigma', value=1)
+        if ok:
+            self.apply_filter(self.apply_sigma_filter, sigma=sigma)
+
     def generate_gaussian_kernel(self, size, sigma):
         kernel = np.fromfunction(
             lambda x, y: (1 / (2 * np.pi * sigma ** 2)) * np.exp(
@@ -139,9 +158,9 @@ class ImageSmoothingApp(QWidget):
 
     def apply_sigma_filter(self, image, sigma):
         blurred = self.apply_gaussian_filter(image, sigma)
-        diff = np.abs(image - blurred)
-        mask = diff < 2 * sigma
-        smoothed_image = np.where(mask, blurred, image)
+        diff_mask = np.abs(image - blurred) < 10 * sigma
+        smoothed_image = np.where(diff_mask, blurred, image)
+        
         return smoothed_image
 
     def calculate_sharpness(self):
