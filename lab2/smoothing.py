@@ -130,8 +130,8 @@ class ImageSmoothingApp(QWidget):
         self.display_image(self.image, self.image_label)
 
     def add_noise(self):
-        noise = np.random.randint(0, 256 * 0.3, size=self.image.shape, dtype=np.uint8)
-        self.image = np.clip(self.image + noise, 0, 255).astype(np.uint8)
+        noise = np.random.randint(0, int(256 * 0.3), size=self.image.shape, dtype=np.uint8)  # Учитываем диапазон интенсивности пикселей (0-255)
+        self.image = np.clip(self.image.astype(np.uint16) + noise.astype(np.uint16), 0, 255).astype(np.uint8)  # Преобразуем в 16-битное целое число, чтобы избежать переполнения
         self.display_image(self.image, self.image_label)
 
     def apply_filter(self, filter_func, size=None, sigma=None):
