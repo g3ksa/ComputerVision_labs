@@ -23,7 +23,7 @@ class ImageSmoothingApp(QWidget):
         self.load_button = QPushButton("Load Image", self)
         self.load_button.clicked.connect(self.load_image)
 
-        self.reset_image_button = QPushButton('Reset Image', self)
+        self.reset_image_button = QPushButton("Reset Image", self)
         self.reset_image_button.clicked.connect(self.reset_image)
 
         self.rect_filter_button = QPushButton("Apply Rectangular Filter (3x3)", self)
@@ -48,10 +48,12 @@ class ImageSmoothingApp(QWidget):
             lambda: self.apply_filter(self.apply_median_filter, size=5)
         )
 
-        self.gaussian_filter_button = QPushButton('Apply Gaussian Filter', self)
-        self.gaussian_filter_button.clicked.connect(self.apply_gaussian_filter_with_dialog)
+        self.gaussian_filter_button = QPushButton("Apply Gaussian Filter", self)
+        self.gaussian_filter_button.clicked.connect(
+            self.apply_gaussian_filter_with_dialog
+        )
 
-        self.sigma_filter_button = QPushButton('Apply Sigma Filter', self)
+        self.sigma_filter_button = QPushButton("Apply Sigma Filter", self)
         self.sigma_filter_button.clicked.connect(self.apply_sigma_filter_with_dialog)
 
         self.calculate_sharpness_button = QPushButton("Calculate Sharpness", self)
@@ -59,6 +61,9 @@ class ImageSmoothingApp(QWidget):
 
         self.add_noise_button = QPushButton("Add Noise", self)
         self.add_noise_button.clicked.connect(self.add_noise)
+
+        self.save_image_button = QPushButton("Save current image", self)
+        self.save_image_button.clicked.connect(self.save_image)
 
         grid = QGridLayout()
         grid.addWidget(self.load_button, 0, 0)
@@ -71,8 +76,9 @@ class ImageSmoothingApp(QWidget):
         grid.addWidget(self.add_noise_button, 3, 1)
         grid.addWidget(self.rect_filter_button_5x5, 4, 0)
         grid.addWidget(self.median_filter_button_5x5, 4, 1)
-        grid.addWidget(self.image_label, 5, 0, 1, 2)
-        grid.addWidget(self.result_label, 6, 0, 1, 2)
+        grid.addWidget(self.save_image_button, 5, 0)
+        grid.addWidget(self.image_label, 6, 0, 1, 2)
+        grid.addWidget(self.result_label, 7, 0, 1, 2)
         self.setLayout(grid)
         self.image = None
         self.smoothed_image = None
@@ -123,7 +129,6 @@ class ImageSmoothingApp(QWidget):
         self.image = self.raw_image
         self.display_image(self.image, self.image_label)
 
-
     def add_noise(self):
         noise = np.random.randint(0, 256 * 0.3, size=self.image.shape, dtype=np.uint8)
         self.image = np.clip(self.image + noise, 0, 255).astype(np.uint8)
@@ -162,14 +167,13 @@ class ImageSmoothingApp(QWidget):
                 smoothed_image[i, j] = np.median(roi)
         return smoothed_image
 
-
     def apply_gaussian_filter_with_dialog(self):
-        sigma, ok = QInputDialog.getDouble(self, 'Sigma', 'Enter sigma', value=1)
+        sigma, ok = QInputDialog.getDouble(self, "Sigma", "Enter sigma", value=1)
         if ok:
             self.apply_filter(self.apply_gaussian_filter, sigma=sigma)
 
     def apply_sigma_filter_with_dialog(self):
-        sigma, ok = QInputDialog.getDouble(self, 'Sigma', 'Enter sigma', value=1)
+        sigma, ok = QInputDialog.getDouble(self, "Sigma", "Enter sigma", value=1)
         if ok:
             self.apply_filter(self.apply_sigma_filter, sigma=sigma)
 
@@ -209,7 +213,7 @@ class ImageSmoothingApp(QWidget):
         blurred = self.apply_gaussian_filter(image, sigma)
         diff_mask = np.abs(image - blurred) < 10 * sigma
         smoothed_image = np.where(diff_mask, blurred, image)
-        
+
         return smoothed_image
 
     def calculate_sharpness(self):
@@ -251,6 +255,19 @@ class ImageSmoothingApp(QWidget):
                 filtered_image[i, j] = filtered_value
 
         return filtered_image
+
+    def save_image(self):
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "Save Image", "", "Images (*.png *.jpg *.jpeg)"
+        )
+        if file_path:
+            height, width = self.image.shape[:2]
+            bytes_per_line = width
+            q_img = QImage(
+                self.image.data, width, height, bytes_per_line, QImage.Format_Grayscale8
+            )
+            pixmap = QPixmap(q_img)
+            pixmap.save(file_path)
 
 
 if __name__ == "__main__":

@@ -9,9 +9,10 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QPushButton,
     QFileDialog,
-    QLineEdit,
+    QInputDialog,
+    QGraphicsBlurEffect,
 )
-from PyQt5.QtGui import QPixmap, QImage
+from PyQt5.QtGui import QPixmap, QImage, QColor
 
 
 class ImageChromaticityApp(QWidget):
@@ -24,7 +25,7 @@ class ImageChromaticityApp(QWidget):
         self.load_button.clicked.connect(self.load_image)
 
         self.log_button = QPushButton("Нерезкое маскирование", self)
-        self.log_button.clicked.connect(lambda: self.apply_filter(self.unsharp_masking))
+        self.log_button.clicked.connect(self.unsharp_masking)
 
         self.reset_btn = QPushButton("Сброс", self)
         self.reset_btn.clicked.connect(
@@ -64,43 +65,57 @@ class ImageChromaticityApp(QWidget):
         pixmap = QPixmap(q_img)
         label_widget.setPixmap(pixmap)
 
-    def apply_filter(
-        self,
-        filter_func,
-        gamma=None,
-        threshold=None,
-        approach=None,
-        constant_value=None,
-        min_value=None,
-        max_value=None,
-    ):
-        if self.image is None:
-            return
-        else:
-            self.image = filter_func(self.image)
-        self.display_image(self.image, self.image_label)
+    def unsharp_masking(self, radius=1, threshold=0, k=1, lambda_val=1):
+        radius = 1
+        threshold = 0
 
-    def gaussian_kernel(self, size, sigma):
-        kernel = np.fromfunction(
-            lambda x, y: (1 / (2 * np.pi * sigma**2))
-            * np.exp(
-                -((x - (size - 1) / 2) ** 2 + (y - (size - 1) / 2) ** 2)
-                / (2 * sigma**2)
-            ),
-            (size, size),
+        k, ok1 = QInputDialog.getDouble(self, "k", "Enter k", value=1)
+        lambda_val, ok2 = QInputDialog.getDouble(
+            self, "lambda", "Enter lambda", value=1
         )
-        return kernel / np.sum(kernel)
 
-    def unsharp_masking(
-        self, image, kernel_size=(5, 5), sigma=1.0, alpha=1.5, beta=-0.5
-    ):
-        blurred = cv2.filter2D(image, -1, self.gaussian_kernel(kernel_size[0], sigma))
-        laplacian_kernel = np.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]])
-        laplacian = cv2.filter2D(blurred, -1, laplacian_kernel)
-        sharpened = image + alpha * laplacian + beta
-        sharpened = np.clip(sharpened, 0, 255).astype(np.uint8)
+        if ok1 and ok2:
+            blur_effect = QGraphicsBlurEffect()
+            blur_effect.setBlurRadius(radius)
+            self.image_label.setGraphicsEffect(blur_effect)
 
-        return sharpened
+            height, width = self.original_image.shape[:2]
+            bytes_per_line = width * self.original_image.shape[2]
+            q_img = QImage(
+                self.original_image.data,
+                width,
+                height,
+                bytes_per_line,
+                QImage.Format_RGB888,
+            ).rgbSwapped()
+            original_pixmap = QPixmap(q_img)
+
+            img = original_pixmap.toImage()
+            blurred_img = self.image_label.pixmap().toImage()
+
+            for x in range(img.width()):
+                for y in range(img.height()):
+                    pixel_color = QColor(img.pixel(x, y))
+                    blurred_pixel_color = QColor(blurred_img.pixel(x, y))
+
+                    new_intensity = (
+                        pixel_color.lightness()
+                        + lambda_val
+                        * (pixel_color.lightness() - blurred_pixel_color.lightness())
+                        * k
+                    )
+                    new_intensity = int(min(max(0, new_intensity), 255))
+
+                    if (
+                        abs(pixel_color.lightness() - blurred_pixel_color.lightness())
+                        >= threshold
+                    ):
+                        new_color = QColor.fromHsl(
+                            pixel_color.hue(), pixel_color.saturation(), new_intensity
+                        )
+                        img.setPixelColor(x, y, new_color)
+
+            self.image_label.setPixmap(QPixmap(img))
 
 
 if __name__ == "__main__":
