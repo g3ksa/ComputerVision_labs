@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import (
     QFileDialog,
     QInputDialog,
     QGraphicsBlurEffect,
+    QMessageBox,
 )
 from PyQt5.QtGui import QPixmap, QImage, QColor
 
@@ -27,6 +28,9 @@ class ImageChromaticityApp(QWidget):
         self.log_button = QPushButton("Нерезкое маскирование", self)
         self.log_button.clicked.connect(self.unsharp_masking)
 
+        self.calculate_sharpness_button = QPushButton("Расчитать резкость")
+        self.calculate_sharpness_button.clicked.connect(self.calculate_sharpness)
+
         self.reset_btn = QPushButton("Сброс", self)
         self.reset_btn.clicked.connect(
             lambda: self.display_image(self.original_image, self.image_label)
@@ -35,6 +39,7 @@ class ImageChromaticityApp(QWidget):
         self.layout = QVBoxLayout()
         self.layout.addWidget(self.load_button)
         self.layout.addWidget(self.log_button)
+        self.layout.addWidget(self.calculate_sharpness_button)
         self.layout.addWidget(self.reset_btn)
         self.layout.addWidget(self.image_label)
         self.layout.addWidget(self.result_label)
@@ -65,38 +70,26 @@ class ImageChromaticityApp(QWidget):
         pixmap = QPixmap(q_img)
         label_widget.setPixmap(pixmap)
 
-    def unsharp_masking(self, radius=1, threshold=0, k=1, lambda_val=1):
-        radius = 1
-        threshold = 0
-
+    def unsharp_masking(self):
+        # Запрос параметров у пользователя
         k, ok1 = QInputDialog.getDouble(self, "k", "Enter k", value=1.0)
-        lambda_val, ok2 = QInputDialog.getDouble(
-            self, "lambda", "Enter lambda", value=1.0
-        )
+        lambda_val, ok2 = QInputDialog.getDouble(self, "lambda", "Enter lambda", value=1.0)
 
         if ok1 and ok2:
+            # Применение размытия к исходному изображению
             blur_effect = QGraphicsBlurEffect()
-            blur_effect.setBlurRadius(radius)
+            blur_effect.setBlurRadius(1)  # Можно задать другой радиус размытия
             self.image_label.setGraphicsEffect(blur_effect)
 
-            height, width = self.original_image.shape[:2]
-            bytes_per_line = width * self.original_image.shape[2]
-            q_img = QImage(
-                self.original_image.data,
-                width,
-                height,
-                bytes_per_line,
-                QImage.Format_RGB888,
-            ).rgbSwapped()
-            original_pixmap = QPixmap(q_img)
+            # Создание копии изображения для обработки
+            pixmap = self.image_label.pixmap()
+            img = pixmap.toImage()
 
-            img = original_pixmap.toImage()
-            blurred_img = self.image_label.pixmap().toImage()
-
+            # Применение фильтра нерезкого маскирования
             for x in range(img.width()):
                 for y in range(img.height()):
                     pixel_color = QColor(img.pixel(x, y))
-                    blurred_pixel_color = QColor(blurred_img.pixel(x, y))
+                    blurred_pixel_color = QColor(pixmap.toImage().pixel(x, y))
 
                     new_intensity = (
                         pixel_color.lightness()
@@ -106,16 +99,33 @@ class ImageChromaticityApp(QWidget):
                     )
                     new_intensity = int(min(max(0, new_intensity), 255))
 
-                    if (
-                        abs(pixel_color.lightness() - blurred_pixel_color.lightness())
-                        >= threshold
-                    ):
-                        new_color = QColor.fromHsl(
-                            pixel_color.hue(), pixel_color.saturation(), new_intensity
-                        )
-                        img.setPixelColor(x, y, new_color)
+                    new_color = QColor.fromHsl(
+                        pixel_color.hue(), pixel_color.saturation(), new_intensity
+                    )
+                    img.setPixelColor(x, y, new_color)
 
+            # Обновление изображения на метке
             self.image_label.setPixmap(QPixmap(img))
+
+    def calculate_sharpness(self):
+        # Преобразование изображения в массив numpy
+        img_array = np.array(self.image)
+
+        # Вычисление градиента по оси X и Y
+        gradient_x = np.gradient(img_array, axis=0)
+        gradient_y = np.gradient(img_array, axis=1)
+
+        # Вычисление общего градиента как суммы модулей градиентов по осям X и Y
+        total_gradient = np.sqrt(gradient_x**2 + gradient_y**2)
+
+        # Среднее значение градиента как метрика резкости
+        sharpness_score = np.mean(total_gradient)
+
+        msg = QMessageBox()
+        msg.setWindowTitle("Sharpness")
+        msg.setText(f"Sharpness: {sharpness_score}")
+
+        msg.exec_()
 
 
 if __name__ == "__main__":
