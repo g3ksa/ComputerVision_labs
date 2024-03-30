@@ -5,7 +5,7 @@ import math
 import numpy as np
 from PIL import Image
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor, QPixmap, QImage
+from PyQt5.QtGui import QColor, QPixmap, QImage, QTransform
 from PyQt5.QtWidgets import (
     QLabel,
     QApplication,
@@ -332,9 +332,9 @@ class ImageWindow(QMainWindow):
                 ("Уменьшение контрастности", self.decrease_contrast),
                 ("Увеличение контрастности", self.increase_contrast),
                 ("Получение негатива", self.invert_brightness),
-                ("Обмен цветовых каналов", self.save_image),
-                ("Симметричное отображение", self.save_image),
-                ("Удаление шума", self.save_image),
+                ("Обмен цветовых каналов",self.swap_color_channels ),
+                ("Симметричное отображение",self.mirror_image ),
+                ("Удаление шума", self.denoise_image),
                 ("Рандом фильтр", self.apply_random_filter),
                 ("Расчёт контрастности", self.show_input_dialog),
                 ("Сброс", self.reset_to_original),
@@ -369,6 +369,56 @@ class ImageWindow(QMainWindow):
 
         self.info_label.setText(text)
         self.info_window.show()
+
+    def mirror_image(self):
+        # Преобразуем QPixmap в QImage
+        qimage = self.image.toImage()
+
+        # Создаем матрицу трансформации для зеркального отражения по горизонтали
+        transform = QTransform()
+        transform.scale(-1, 1)
+
+        # Применяем трансформацию к изображению
+        mirrored_image = qimage.transformed(transform)
+
+        self.image = QPixmap.fromImage(mirrored_image)
+        self.label.setPixmap(self.image)
+
+    def denoise_image(self, kernel_size=3):
+        # Преобразуем QPixmap в QImage
+        qimage = self.image.toImage()
+
+        # Применяем медианный фильтр к каждому пикселю
+        for i in range(1, qimage.height() - 1):
+            for j in range(1, qimage.width() - 1):
+                red_values, green_values, blue_values = [], [], []
+                for k in range(-1, 2):
+                    for l in range(-1, 2):
+                        color = qimage.pixelColor(j + l, i + k)
+                        red_values.append(color.red())
+                        green_values.append(color.green())
+                        blue_values.append(color.blue())
+                median_red = sorted(red_values)[len(red_values) // 2]
+                median_green = sorted(green_values)[len(green_values) // 2]
+                median_blue = sorted(blue_values)[len(blue_values) // 2]
+                qimage.setPixelColor(j, i, QColor(median_red, median_green, median_blue))
+
+        self.image = QPixmap.fromImage(qimage)
+        self.label.setPixmap(self.image)
+
+    def swap_color_channels(self):
+        # Преобразуем QPixmap в QImage
+        qimage = self.image.toImage()
+
+        # Обмениваем каналы
+        for i in range(qimage.height()):
+            for j in range(qimage.width()):
+                color = qimage.pixelColor(j, i)
+                qimage.setPixelColor(j, i, QColor(color.blue(), color.green(), color.red()))
+
+        self.image = QPixmap.fromImage(qimage)
+        self.label.setPixmap(self.image)
+
 
     def increase_red(self):
         image_qimage = self.image.toImage()
