@@ -69,9 +69,9 @@ class ImageChromaticityApp(QWidget):
         radius = 1
         threshold = 0
 
-        k, ok1 = QInputDialog.getDouble(self, "k", "Enter k", value=1)
+        k, ok1 = QInputDialog.getDouble(self, "k", "Enter k", value=1.0)
         lambda_val, ok2 = QInputDialog.getDouble(
-            self, "lambda", "Enter lambda", value=1
+            self, "lambda", "Enter lambda", value=1.0
         )
 
         if ok1 and ok2:

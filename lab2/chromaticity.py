@@ -55,6 +55,7 @@ class ImageChromaticityApp(QWidget):
                 self.brightness_range_cut,
                 min_value=100,
                 max_value=200,
+                constant_value=50,
                 approach="preserve",
             )
         )
@@ -186,7 +187,7 @@ class ImageChromaticityApp(QWidget):
             processed_image[image < min_val] = constant_value
             processed_image[image > max_val] = constant_value
         elif approach == "preserve":
-            pass
+            processed_image[(image > min_val) & (image < max_val)] = constant_value
 
         return processed_image
 
