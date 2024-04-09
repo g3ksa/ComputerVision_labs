@@ -50,24 +50,23 @@ class ImageChromaticityApp(QWidget):
             self, "Open Image File", "", "Image Files (*.png *.jpg *.jpeg *.bmp)"
         )
         if file_path:
-            self.image = cv2.imread(file_path, cv2.IMREAD_COLOR)
+            self.image = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
             self.original_image = self.image
             self.display_image(self.image, self.image_label)
             self.log_button.setVisible(True)
 
     def display_image(self, image, label_widget):
-        self.image = image
         height, width = image.shape[:2]
-        bytes_per_line = width * image.shape[2]
+        bytes_per_line = width
         q_img = QImage(
-            image.data, width, height, bytes_per_line, QImage.Format_RGB888
-        ).rgbSwapped()
+            image.data, width, height, bytes_per_line, QImage.Format_Grayscale8
+        )
         pixmap = QPixmap(q_img)
         label_widget.setPixmap(pixmap)
 
     def unsharp_masking(self, radius=1, threshold=0, k=1, lambda_val=1):
         radius = 1
-        threshold = 0
+        threshold = 1
 
         k, ok1 = QInputDialog.getDouble(self, "k", "Enter k", value=1.0)
         lambda_val, ok2 = QInputDialog.getDouble(
@@ -76,46 +75,40 @@ class ImageChromaticityApp(QWidget):
 
         if ok1 and ok2:
             blur_effect = QGraphicsBlurEffect()
-            blur_effect.setBlurRadius(radius)
+            blur_effect.setBlurRadius((2 * k) + 1)
             self.image_label.setGraphicsEffect(blur_effect)
 
             height, width = self.original_image.shape[:2]
-            bytes_per_line = width * self.original_image.shape[2]
+            bytes_per_line = width
             q_img = QImage(
                 self.original_image.data,
                 width,
                 height,
                 bytes_per_line,
-                QImage.Format_RGB888,
-            ).rgbSwapped()
-            original_pixmap = QPixmap(q_img)
+                QImage.Format_Grayscale8,
+            )
 
-            img = original_pixmap.toImage()
+            img = q_img
             blurred_img = self.image_label.pixmap().toImage()
 
-            for x in range(img.width()):
-                for y in range(img.height()):
-                    pixel_color = QColor(img.pixel(x, y))
-                    blurred_pixel_color = QColor(blurred_img.pixel(x, y))
+            for x in range(img.height()):
+                for y in range(img.width()):
+                    pixel_intensity = QColor(img.pixel(x, y)).lightness()
+                    blurred_pixel_intensity = QColor(
+                        blurred_img.pixel(x, y)
+                    ).lightness()
 
-                    new_intensity = (
-                        pixel_color.lightness()
-                        + lambda_val
-                        * (pixel_color.lightness() - blurred_pixel_color.lightness())
-                        * k
+                    new_intensity = pixel_intensity + (
+                        lambda_val * (pixel_intensity - blurred_pixel_intensity)
                     )
+
                     new_intensity = int(min(max(0, new_intensity), 255))
 
-                    if (
-                        abs(pixel_color.lightness() - blurred_pixel_color.lightness())
-                        >= threshold
-                    ):
-                        new_color = QColor.fromHsl(
-                            pixel_color.hue(), pixel_color.saturation(), new_intensity
-                        )
-                        img.setPixelColor(x, y, new_color)
+                    if abs(pixel_intensity - blurred_pixel_intensity) >= threshold:
+                        img.setPixel(x, y, new_intensity)
 
-            self.image_label.setPixmap(QPixmap(img))
+            new_pixmap = QPixmap.fromImage(img)
+            self.image_label.setPixmap(new_pixmap)
 
 
 if __name__ == "__main__":
