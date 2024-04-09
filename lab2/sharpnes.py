@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import (
     QFileDialog,
     QInputDialog,
     QGraphicsBlurEffect,
+    QMessageBox,
 )
 from PyQt5.QtGui import QPixmap, QImage, QColor
 
@@ -27,6 +28,9 @@ class ImageChromaticityApp(QWidget):
         self.log_button = QPushButton("Нерезкое маскирование", self)
         self.log_button.clicked.connect(self.unsharp_masking)
 
+        self.calculate_sharpness_button = QPushButton("Расчитать резкость")
+        self.calculate_sharpness_button.clicked.connect(self.calculate_sharpness)
+
         self.reset_btn = QPushButton("Сброс", self)
         self.reset_btn.clicked.connect(
             lambda: self.display_image(self.original_image, self.image_label)
@@ -35,6 +39,7 @@ class ImageChromaticityApp(QWidget):
         self.layout = QVBoxLayout()
         self.layout.addWidget(self.load_button)
         self.layout.addWidget(self.log_button)
+        self.layout.addWidget(self.calculate_sharpness_button)
         self.layout.addWidget(self.reset_btn)
         self.layout.addWidget(self.image_label)
         self.layout.addWidget(self.result_label)
@@ -69,11 +74,10 @@ class ImageChromaticityApp(QWidget):
         threshold = 1
 
         k, ok1 = QInputDialog.getDouble(self, "k", "Enter k", value=1.0)
-        lambda_val, ok2 = QInputDialog.getDouble(
-            self, "lambda", "Enter lambda", value=1.0
-        )
+        lambda_val, ok2 = QInputDialog.getDouble(self, "lambda", "Enter lambda", value=1.0)
 
         if ok1 and ok2:
+            # Применение размытия к исходному изображению
             blur_effect = QGraphicsBlurEffect()
             blur_effect.setBlurRadius((2 * k) + 1)
             self.image_label.setGraphicsEffect(blur_effect)
@@ -109,6 +113,26 @@ class ImageChromaticityApp(QWidget):
 
             new_pixmap = QPixmap.fromImage(img)
             self.image_label.setPixmap(new_pixmap)
+
+    def calculate_sharpness(self):
+        # Преобразование изображения в массив numpy
+        img_array = np.array(self.image)
+
+        # Вычисление градиента по оси X и Y
+        gradient_x = np.gradient(img_array, axis=0)
+        gradient_y = np.gradient(img_array, axis=1)
+
+        # Вычисление общего градиента как суммы модулей градиентов по осям X и Y
+        total_gradient = np.sqrt(gradient_x**2 + gradient_y**2)
+
+        # Среднее значение градиента как метрика резкости
+        sharpness_score = np.mean(total_gradient)
+
+        msg = QMessageBox()
+        msg.setWindowTitle("Sharpness")
+        msg.setText(f"Sharpness: {sharpness_score}")
+
+        msg.exec_()
 
 
 if __name__ == "__main__":

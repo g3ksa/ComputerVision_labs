@@ -57,7 +57,7 @@ class ImageSmoothingApp(QWidget):
         self.sigma_filter_button.clicked.connect(self.apply_sigma_filter_with_dialog)
 
         self.calculate_sharpness_button = QPushButton("Calculate Sharpness", self)
-        self.calculate_sharpness_button.clicked.connect(self.calculate_sharpness)
+        self.calculate_sharpness_button.clicked.connect(self.calculate_absolute_difference_percentage)
 
         self.add_noise_button = QPushButton("Add Noise", self)
         self.add_noise_button.clicked.connect(self.add_noise)
@@ -216,45 +216,22 @@ class ImageSmoothingApp(QWidget):
 
         return smoothed_image
 
-    def calculate_sharpness(self):
-        if self.image is None:
+    def calculate_absolute_difference_percentage(self):
+        if self.image is None or self.raw_image is None:
             return
 
-        sobelx = self.sobel_filter(self.image, "x")
-        sobely = self.sobel_filter(self.image, "y")
-        gradient_magnitude = np.sqrt(sobelx**2 + sobely**2)
-        sharpness = np.mean(gradient_magnitude)
+        absolute_difference = np.abs(self.image - self.raw_image)
+        sum_raw = np.sum(np.abs(self.raw_image))
+        if sum_raw == 0:
+            percentage_difference = 0
+        else:
+            sum_absolute_difference = np.sum(absolute_difference)
+            percentage_difference = sum_absolute_difference / sum_raw * 100
 
         msg = QMessageBox()
-        msg.setWindowTitle("Sharpness")
-        msg.setText(f"Sharpness: {sharpness}")
+        msg.setWindowTitle("Absolute Difference Percentage")
+        msg.setText(f"Absolute Difference: {percentage_difference:.2f}%")
         msg.exec_()
-
-    def sobel_filter(self, image, axis):
-        if axis == "x":
-            kernel = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
-        elif axis == "y":
-            kernel = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
-        else:
-            raise ValueError("Invalid axis parameter")
-
-        # Apply the kernel to the image using convolution
-        filtered_image = np.zeros_like(image, dtype=np.float32)
-        height, width = image.shape
-        k_height, k_width = kernel.shape
-        pad_height = k_height // 2
-        pad_width = k_width // 2
-        padded_image = np.pad(
-            image, ((pad_height, pad_height), (pad_width, pad_width)), mode="constant"
-        )
-
-        for i in range(height):
-            for j in range(width):
-                region = padded_image[i : i + k_height, j : j + k_width]
-                filtered_value = np.sum(region * kernel)
-                filtered_image[i, j] = filtered_value
-
-        return filtered_image
 
     def save_image(self):
         file_path, _ = QFileDialog.getSaveFileName(
